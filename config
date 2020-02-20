@@ -1,0 +1,2 @@
+DB_FILE = 'assets/reportDB.db'
+PORT = 9090
