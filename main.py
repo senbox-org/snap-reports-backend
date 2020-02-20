@@ -1,70 +1,12 @@
 """
 Simple backend for SNAP REPORT utility.
 """
-import sqlite3
-from sanic import Sanic
 from sanic.response import json, text
+from support import APP, DB
+import support
 
 
-def __init_tags__():
-    rows = DB.execute("SELECT ID, name FROM dockerTags")
-    res = {}
-    for row in rows:
-        res[row['id']] = row['name']
-    return res
 
-def __init_results__():
-    rows = DB.execute("SELECT ID, tag FROM resultTags")
-    res = {}
-    for row in rows:
-        res[row['id']] = row['tag']
-    return res
-
-def __get_test__(test_id):
-    rows = DB.execute(f"SELECT * FROM tests where id='{test_id}'")
-    res = None
-    for row in rows:
-        res = dict(row)
-    return res
-
-def __get_job__(job_id):
-    rows = DB.execute(f"SELECT * FROM jobs WHERE id = '{job_id}'")
-    res = None
-    for row in rows:
-        res = dict(row)
-        res['dockerTag'] = __convert_tag__(res['dockerTag'])
-        res['result'] = __convert_result__(res['result'])
-    return res
-
-APP = Sanic('SNAP Reports')
-APP.config.from_pyfile('config')
-
-DB = sqlite3.connect(APP.config.DB_FILE)
-DB.row_factory = sqlite3.Row
-
-TAGS = __init_tags__()
-RESULTS = __init_results__()
-
-
-def __convert_tag__(tag_id):
-    return {
-        "id": tag_id,
-        "name": TAGS[tag_id]
-    }
-
-def __convert_result__(res_id):
-    return {
-        "id": res_id,
-        "tag": RESULTS[res_id]
-    }
-
-def __get_last_id__(table):
-    rows = DB.execute(f"SELECT max(id) FROM {table}")
-    return rows.fetchone()[0]
-
-def __get_first_id__(table):
-    rows = DB.execute(f"SELECT min(id) FROM {table}")
-    return rows.fetchone()[0]
 
 @APP.route("/api/test")
 async def test_list(request):
@@ -91,7 +33,7 @@ async def get_test(_, test_id):
     """
     Retrieve list of tests.
     """
-    res = __get_test__(test_id)
+    res = support.__get_test__(test_id)
     if res is None:
         return text("Test not found.", status=404)
     return json(res)
@@ -178,8 +120,8 @@ async def job_list(request):
     res = []
     for row in rows:
         value = dict(row)
-        value['dockerTag'] = __convert_tag__(value['dockerTag'])
-        value['result'] = __convert_result__(value['result'])
+        value['dockerTag'] = support.__convert_tag__(value['dockerTag'])
+        value['result'] = support.__convert_result__(value['result'])
         res.append(value)
     return json({"tests": res})
 
@@ -193,22 +135,11 @@ async def job_list_by_tag(_, tag):
     res = []
     for row in rows:
         value = dict(row)
-        value['dockerTag'] = __convert_tag__(value['dockerTag'])
-        value['result'] = __convert_result__(value['result'])
+        value['dockerTag'] = support.__convert_tag__(value['dockerTag'])
+        value['result'] = support.__convert_result__(value['result'])
         res.append(value)
     return json({"tests": res})
 
-def __get_id__(req, table):
-    res_id = None
-    if isinstance(req, int):
-        res_id = req
-    elif isinstance(req, str):
-        low = req.lower()
-        if low == 'last':
-            res_id = __get_last_id__(table)
-        if low == 'first':
-            res_id = __get_first_id__(table)
-    return res_id
 
 @APP.route("/api/job/<job_id>")
 async def get_job(_, job_id):
@@ -219,36 +150,16 @@ async def get_job(_, job_id):
     -----------
      - id: job id
     """
-    job_id = __get_id__(job_id, 'jobs')
+    job_id = support.__get_id__(job_id, 'jobs')
     if job_id is None:
         return text("Option non valid", status=500)
-    res = __get_job__(job_id)
+    res = support.__get_job__(job_id)
     if res is None:
         return text("Something bad happened", status=500)
     return json(res)
 
 
-def __get_job_stats__(job_id):
-    job = __get_job__(job_id)
-    if job is None:
-        return text("Job do not exist", status=404)
 
-    rows = DB.execute(f"""
-        SELECT 
-            id, test, job, result, start, duration, cpu_time, cpu_usage_avg, 
-            cpu_usage_max, memory_avg, memory_max, io_write, io_read, threads_avg
-        FROM results WHERE job = '{job_id}' ORDER BY id""")
-    res = []
-    for row in rows:
-        val = dict(row)
-        val['result'] = __convert_result__(val['result'])
-        val['test'] = __get_test__(val['test'])
-        val['job'] = job
-        res.append(val)
-
-    if not res:
-        return text("No results found", status=404)
-    return json({'statistics':res})
 
 @APP.route("/api/job/<job_id>/statistics")
 async def get_job_results(_, job_id):
@@ -259,10 +170,10 @@ async def get_job_results(_, job_id):
     -----------
      - id: job id
     """
-    job_id = __get_id__(job_id, 'jobs')
+    job_id = support.__get_id__(job_id, 'jobs')
     if job_id is None:
         return text("Option non valid", status=500)
-    return __get_job_stats__(job_id)
+    return support.__get_job_stats__(job_id)
 
 
 @APP.route("/api/job/<job_id>/statistics/<exec_id:int>")
@@ -274,11 +185,11 @@ async def get_job_exec_stat(_, job_id, exec_id):
     -----------
      - id: job id
     """
-    job_id = __get_id__(job_id, 'jobs')
+    job_id = support.__get_id__(job_id, 'jobs')
 
     if job_id is None:
         return text("Job option non valid", status=500)
-    job = __get_job__(job_id)
+    job = support.__get_job__(job_id)
     if job is None:
         return text("Job do not exist", status=404)
 
@@ -288,8 +199,8 @@ async def get_job_exec_stat(_, job_id, exec_id):
     res = None
     for row in rows:
         val = dict(row)
-        val['result'] = __convert_result__(val['result'])
-        val['test'] = __get_test__(val['test'])
+        val['result'] = support.__convert_result__(val['result'])
+        val['test'] = support.__get_test__(val['test'])
         val['job'] = job
         res = val
 
@@ -306,10 +217,10 @@ async def get_job_summary(_, job_id):
     -----------
      - id: job id
     """
-    job_id = __get_id__(job_id, 'jobs')
+    job_id = support.__get_id__(job_id, 'jobs')
     if job_id is None:
         return text("Option not valid", status=500)
-    job = __get_job__(job_id)
+    job = support.__get_job__(job_id)
     if job is None:
         return text("Job do not exist", status=404)
 
