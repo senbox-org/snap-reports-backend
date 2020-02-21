@@ -1,6 +1,10 @@
+"""
+Simple script to refresh references.
+"""
 import sqlite3
 import datetime as dt
 import sys
+
 
 SELECT_QUERY = """
 SELECT

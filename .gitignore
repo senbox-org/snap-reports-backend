@@ -1,3 +1,5 @@
 __pycache__/
 plots/
 build/
+dist/
+*.egg-info
