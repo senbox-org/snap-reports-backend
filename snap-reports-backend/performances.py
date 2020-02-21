@@ -103,6 +103,18 @@ def test_summary(id):
         return text("No rows found", status=500)
     return __parse_results__(rows)
 
+def __get_reference__(id, field):
+    rows = DB.execute(f"""
+            SELECT {field}
+            FROM reference_values
+            WHERE test={id}
+        """)
+    row = rows.fetchone()
+    if not row:
+        return None
+    return row[0]
+
+
 def test_reference(id):
     """
     Test summary.
@@ -153,20 +165,25 @@ def history_plot(test_id, field, last_n=None):
     field = field.lower()
     if field not in FIELDS:
         return None
-   
+    reference = __get_reference__(test_id, field)
     date, value = __history__(test_id, field, last_n)
     xaxis = dates.datestr2num(date) 
     plt.figure()
-    plt.plot_date(xaxis, value, ls='-', marker='.', xdate=True, tz=None)
+    plt.plot_date(xaxis, value, ls='-', marker='.', xdate=True, tz=None, label='historic values')
+    if reference != None:
+        plt.axhline(reference, c='black', ls='--', alpha=0.5, label='reference')
+    plt.axhline(np.mean(value), ls='--', alpha=0.5, c='C2', label='average')
     plt.xlabel("date")
     plt.ylabel(field)
+    plt.gcf().autofmt_xdate()
+    plt.legend()
+    plt.grid(alpha=0.5)
     fname = f'plot_{test_id}_{field}'
     if last_n is not None:
         fname += f'_{last_n}.jpg'
     else:
         fname += '.jpg'
     path = os.path.join(PLT_PATH, fname)
-    plt.gcf().autofmt_xdate()
     plt.savefig(path)
     return path
 
@@ -174,8 +191,9 @@ def history_plot_moving_average(test_id, field, window, last_n=None, compare=Fal
     field = field.lower()
     if field not in FIELDS:
         return None
-   
+    reference = __get_reference__(test_id, field)
     date, value = __history__(test_id, field, last_n)
+    avg = np.mean(value)
     xaxis = dates.datestr2num(date) 
     sub_x = []
     sub_y = []
@@ -184,16 +202,21 @@ def history_plot_moving_average(test_id, field, window, last_n=None, compare=Fal
         sub_y.append(np.mean(value[i-window:i]))
     plt.figure()
     if compare:
-        plt.plot_date(xaxis, value, ls='-', marker='.', xdate=True, tz=None, alpha=0.8)
-    plt.plot_date(sub_x, sub_y, ls='-', marker='.', xdate=True, tz=None)
+        plt.plot_date(xaxis, value, ls='-', marker='.', color='C1', xdate=True, tz=None, alpha=0.8, label='raw values')
+    plt.plot_date(sub_x, sub_y, ls='-', marker='.', color='C0', xdate=True, tz=None, label='moving average')
+    if reference != None:
+        plt.axhline(reference, c='black', ls='--', alpha=0.5, label='reference')
+    plt.axhline(avg, ls='--', alpha=0.5, c='C2', label='average')
     plt.xlabel("date")
     plt.ylabel(field)
+    plt.gcf().autofmt_xdate()
+    plt.legend()
+    plt.grid(alpha=0.5)
     fname = f'plot_{test_id}_{field}'
     if last_n is not None:
         fname += f'_{last_n}.jpg'
     else:
         fname += '.jpg'
     path = os.path.join(PLT_PATH, fname)
-    plt.gcf().autofmt_xdate()
     plt.savefig(path)
     return path
