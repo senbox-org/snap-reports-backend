@@ -117,7 +117,7 @@ async def get_history_plot(request, test, field):
     if 'max' in request.args:
         last_n = int(request.args['max'][0])
     if 'compare' in request.args:
-        compare = True
+        compare = bool(request.args['compare'][0])
     res = performances.history_plot_moving_average(test_id, field, window, last_n, compare)
     if res is None:
         return text("Field not found", status=404)
