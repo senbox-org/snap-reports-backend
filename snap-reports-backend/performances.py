@@ -169,3 +169,31 @@ def history_plot(test_id, field, last_n=None):
     plt.gcf().autofmt_xdate()
     plt.savefig(path)
     return path
+
+def history_plot_moving_average(test_id, field, window, last_n=None, compare=False):
+    field = field.lower()
+    if field not in FIELDS:
+        return None
+   
+    date, value = __history__(test_id, field, last_n)
+    xaxis = dates.datestr2num(date) 
+    sub_x = []
+    sub_y = []
+    for i in range(window, len(xaxis)):
+        sub_x.append(np.mean(xaxis[i-window:i]))
+        sub_y.append(np.mean(value[i-window:i]))
+    plt.figure()
+    if compare:
+        plt.plot_date(xaxis, value, ls='-', marker='.', xdate=True, tz=None, alpha=0.8)
+    plt.plot_date(sub_x, sub_y, ls='-', marker='.', xdate=True, tz=None)
+    plt.xlabel("date")
+    plt.ylabel(field)
+    fname = f'plot_{test_id}_{field}'
+    if last_n is not None:
+        fname += f'_{last_n}.jpg'
+    else:
+        fname += '.jpg'
+    path = os.path.join(PLT_PATH, fname)
+    plt.gcf().autofmt_xdate()
+    plt.savefig(path)
+    return path

@@ -104,6 +104,26 @@ async def get_history_plot(request, test, field):
         return text("Field not found", status=404)
     return await response.file_stream(res)
 
+@APP.route("/api/test/<test>/history/<field:string>/plot/moving_average")
+async def get_history_plot(request, test, field):
+    test_id = support.get_test_id(test)
+    if test_id is None:
+        return text("Test not found", status=404)
+    last_n = None
+    window = 5
+    compare = False
+    if 'window' in request.args:
+        window = int(request.args['window'][0])
+    if 'max' in request.args:
+        last_n = int(request.args['max'][0])
+    if 'compare' in request.args:
+        compare = True
+    res = performances.history_plot_moving_average(test_id, field, window, last_n, compare)
+    if res is None:
+        return text("Field not found", status=404)
+    return await response.file_stream(res)
+
+
 @APP.route("/api/test/author/<name:string>")
 async def get_test_by_author(_, name):
     """
