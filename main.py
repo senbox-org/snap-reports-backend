@@ -4,9 +4,7 @@ Simple backend for SNAP REPORT utility.
 from sanic.response import json, text
 from support import APP, DB
 import support
-
-
-
+import performances
 
 @APP.route("/api/test")
 async def test_list(request):
@@ -28,33 +26,62 @@ async def test_list(request):
         res.append(dict(row))
     return json({"tests": res})
 
-@APP.route("/api/test/<test_id:int>")
-async def get_test(_, test_id):
+@APP.route("/api/test/<test>")
+async def get_test(_, test):
     """
-    Retrieve list of tests.
+    Retrieve test information.
     """
-    res = support.__get_test__(test_id)
+    test_id = support.get_test_id(test)
+    if test_id is None:
+        return text("Test not found", status=404)
+    res = support.get_test(test_id)
     if res is None:
         return text("Test not found.", status=404)
     return json(res)
 
-@APP.route("/api/test/<test_name:string>")
-async def get_test_by_name(_, test_name):
+@APP.route("/api/test/<test>/summary")
+async def get_test_summary(_, test):
     """
-    Retrieve list of tests.
+    Retrieve test performances summary.
     """
-    rows = DB.execute(f"SELECT * FROM tests where name='{test_name}'")
-    res = None
+    test_id = support.get_test_id(test)
+    if test_id is None:
+        return text("Option not valid", status=500)
+    return performances.test_summary(test_id)
+
+@APP.route("/api/references")
+async def get_references(_):
+    """
+    Retrieve list of references
+    """
+    rows = DB.execute("""
+    SELECT
+        id, test, referenceTag, updated, duration, cpu_time, cpu_usage_avg,
+        cpu_usage_max, memory_avg, memory_max, io_write, io_read, threads_avg,
+        threads_max
+    FROM reference_values;""")
+    res = []
     for row in rows:
-        res = dict(row)
-    if res is None:
-        return text("Test not found.", status=404)
-    return json(res)
+        val = dict(row)
+        val['test'] = support.get_test(val['test'])
+        res.append(val)
+    return json({'references': res})
+
+@APP.route("/api/test/<test>/reference")
+async def get_test_reference(_, test):
+    """
+    Retrieve test reference values.
+    """
+    test_id = support.get_test_id(test)
+    if test_id is None:
+        return text("Option not valid", status=500)
+    return performances.test_reference(test_id)
+
 
 @APP.route("/api/test/author/<name:string>")
 async def get_test_by_author(_, name):
     """
-    Retrieve list of tests.
+    Retrieve list of tests by author.
     """
     rows = DB.execute(f"SELECT * FROM tests where author='{name}' ORDER BY id")
     res = []
@@ -62,10 +89,10 @@ async def get_test_by_author(_, name):
         res.append(dict(row))
     return json({'tests':res})
 
-@APP.route("/api/test/frequency/<name:string>")
+@APP.route("/api/test/tag/<name:string>")
 async def get_test_by_frequency(_, name):
     """
-    Retrieve list of tests.
+    Retrieve list of tests by frequency tag.
     """
     rows = DB.execute(f"SELECT * FROM tests ORDER BY id")
     res = []
@@ -91,10 +118,10 @@ async def testset_list(_):
     return json({"testset": res})
 
 
-@APP.route("/api/testset/<name:string>/tests")
+@APP.route("/api/testset/<name:string>")
 async def testset_test_list(_, name):
     """
-    Retrieve list of testset.
+    Retrieve list of tests of a given testset.
     """
     rows = DB.execute(f"SELECT * FROM tests WHERE testset='{name}' ORDER BY id")
     res = []
@@ -120,23 +147,27 @@ async def job_list(request):
     res = []
     for row in rows:
         value = dict(row)
-        value['dockerTag'] = support.__convert_tag__(value['dockerTag'])
-        value['result'] = support.__convert_result__(value['result'])
+        value['dockerTag'] = support.convert_tag(value['dockerTag'])
+        value['result'] = support.convert_result(value['result'])
         res.append(value)
     return json({"tests": res})
 
 @APP.route("/api/job/tag/<tag:string>")
 async def job_list_by_tag(_, tag):
     """
-    Retrieve list of jobs.
+    Retrieve list of job of a given frequency tag
+
+    Parameters:
+    -----------
+     - tag: frequency tag
     """
     tag = tag.lower()
     rows = DB.execute(f"SELECT * FROM jobs WHERE LOWER(testScope) = '{tag}' ORDER BY id")
     res = []
     for row in rows:
         value = dict(row)
-        value['dockerTag'] = support.__convert_tag__(value['dockerTag'])
-        value['result'] = support.__convert_result__(value['result'])
+        value['dockerTag'] = support.convert_tag(value['dockerTag'])
+        value['result'] = support.convert_result(value['result'])
         res.append(value)
     return json({"tests": res})
 
@@ -144,36 +175,36 @@ async def job_list_by_tag(_, tag):
 @APP.route("/api/job/<job_id>")
 async def get_job(_, job_id):
     """
-    Retrieve list of jobs.
+    Retrieve  job information.
 
     Parameters:
     -----------
      - id: job id
     """
-    job_id = support.__get_id__(job_id, 'jobs')
+    job_id = support.get_id(job_id, 'jobs')
     if job_id is None:
         return text("Option non valid", status=500)
-    res = support.__get_job__(job_id)
+    res = support.get_job(job_id)
     if res is None:
         return text("Something bad happened", status=500)
     return json(res)
 
 
 
-
 @APP.route("/api/job/<job_id>/statistics")
+
 async def get_job_results(_, job_id):
     """
-    Retrieve list of jobs.
+    Retrieve job statistics.
 
     Parameters:
     -----------
-     - id: job id
+     - job_id: job id
     """
-    job_id = support.__get_id__(job_id, 'jobs')
+    job_id = support.get_id(job_id, 'jobs')
     if job_id is None:
         return text("Option non valid", status=500)
-    return support.__get_job_stats__(job_id)
+    return support.get_job_stats(job_id)
 
 
 @APP.route("/api/job/<job_id>/statistics/<exec_id:int>")
@@ -185,11 +216,11 @@ async def get_job_exec_stat(_, job_id, exec_id):
     -----------
      - id: job id
     """
-    job_id = support.__get_id__(job_id, 'jobs')
+    job_id = support.get_id(job_id, 'jobs')
 
     if job_id is None:
         return text("Job option non valid", status=500)
-    job = support.__get_job__(job_id)
+    job = support.get_job(job_id)
     if job is None:
         return text("Job do not exist", status=404)
 
@@ -199,8 +230,8 @@ async def get_job_exec_stat(_, job_id, exec_id):
     res = None
     for row in rows:
         val = dict(row)
-        val['result'] = support.__convert_result__(val['result'])
-        val['test'] = support.__get_test__(val['test'])
+        val['result'] = support.convert_result(val['result'])
+        val['test'] = support.get_test(val['test'])
         val['job'] = job
         res = val
 
@@ -217,15 +248,15 @@ async def get_job_summary(_, job_id):
     -----------
      - id: job id
     """
-    job_id = support.__get_id__(job_id, 'jobs')
+    job_id = support.get_id(job_id, 'jobs')
     if job_id is None:
         return text("Option not valid", status=500)
-    job = support.__get_job__(job_id)
+    job = support.get_job(job_id)
     if job is None:
         return text("Job do not exist", status=404)
 
     rows = DB.execute(f"""
-        SELECT 
+        SELECT
             result, duration, cpu_time, memory_avg, memory_max
         FROM results WHERE job = '{job_id}'""")
     summary = {
@@ -256,6 +287,13 @@ async def get_job_summary(_, job_id):
         summary['memory']['average'] += row['memory_avg']
     summary['memory']['average'] /= summary['tests']
     return json(summary)
+
+@APP.route("/favicon.ico")
+def favicon(_):
+    """
+    solve faviocon warnings
+    """
+    return text("NO ICON", status=404)
 
 
 if __name__ == "__main__":
