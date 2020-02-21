@@ -2,6 +2,7 @@
 Simple backend for SNAP REPORT utility.
 """
 from sanic.response import json, text
+from sanic import response
 from support import APP, DB
 import support
 import performances
@@ -20,7 +21,7 @@ async def test_list(request):
 
     if query_str:
         query_str = "WHERE " + query_str
-    rows = DB.execute("SELECT * FROM tests "+query_str + " ORDER BY id")
+    rows = DB.execute("SELECT * FROM tests "+qurey_str + " ORDER BY id")
     res = []
     for row in rows:
         res.append(dict(row))
@@ -74,9 +75,34 @@ async def get_test_reference(_, test):
     """
     test_id = support.get_test_id(test)
     if test_id is None:
-        return text("Option not valid", status=500)
+        return text("Test not found", status=404)
     return performances.test_reference(test_id)
 
+@APP.route("/api/test/<test>/history/<field:string>")
+async def get_history(request, test, field):
+    """
+    Get history
+    """
+    test_id = support.get_test_id(test)
+    if test_id is None:
+        return text("Test not found", status=404)
+    last_n = None
+    if 'max' in request.args:
+        last_n = int(request.args['max'][0])
+    return performances.history(test_id, field, last_n)
+
+@APP.route("/api/test/<test>/history/<field:string>/plot")
+async def get_history_plot(request, test, field):
+    test_id = support.get_test_id(test)
+    if test_id is None:
+        return text("Test not found", status=404)
+    last_n = None
+    if 'max' in request.args:
+        last_n = int(request.args['max'][0])
+    res = performances.history_plot(test_id, field, last_n)
+    if res is None:
+        return text("Field not found", status=404)
+    return await response.file_stream(res)
 
 @APP.route("/api/test/author/<name:string>")
 async def get_test_by_author(_, name):
@@ -192,7 +218,6 @@ async def get_job(_, job_id):
 
 
 @APP.route("/api/job/<job_id>/statistics")
-
 async def get_job_results(_, job_id):
     """
     Retrieve job statistics.

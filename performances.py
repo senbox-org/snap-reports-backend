@@ -2,8 +2,20 @@
 """
 import sys
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.dates as dates
 from support import DB
 from sanic.response import text, json
+import os
+
+CWD = os.path.abspath(os.getcwd())
+PLT_PATH = os.path.join(CWD,'plots')
+
+if not os.path.isdir(PLT_PATH):
+    os.mkdir(PLT_PATH)
+
+FIELDS = ["duration", "cpu_time", "cpu_usage_avg", "cpu_usage_max", "memory_avg", 
+    "memory_max", "io_read", "io_write", "threads_avg", "threads_max"]
 
 def __parse_results__(rows):
     duration = []
@@ -106,3 +118,54 @@ def test_reference(id):
     if not row:
         return text("No reference found", status=404)
     return json(dict(row))
+
+
+def __history__(test_id, field, last_n):
+    query = f"""
+        SELECT start, {field} 
+        FROM results 
+        WHERE test = '{test_id}' AND result = '1'
+        ORDER BY start DESC
+        """
+    if last_n is not None:
+        query += f" LIMIT {last_n}"
+    rows = DB.execute(query)
+    value =[]
+    date = []
+    for row in rows:
+        date.append(row['start'])
+        value.append(row[field])
+    return date, value
+
+def history(test_id, field, last_n=None):
+    field = field.lower()
+    if field not in FIELDS:
+        return text("Field not valid", status=500)
+   
+    date, value = __history__(test_id, field, last_n)
+    return json({
+        'date': date,
+        'value': value
+    })
+
+
+def history_plot(test_id, field, last_n=None):
+    field = field.lower()
+    if field not in FIELDS:
+        return None
+   
+    date, value = __history__(test_id, field, last_n)
+    xaxis = dates.datestr2num(date) 
+    plt.figure()
+    plt.plot_date(xaxis, value, ls='-', marker='.', xdate=True, tz=None)
+    plt.xlabel("date")
+    plt.ylabel(field)
+    fname = f'plot_{test_id}_{field}'
+    if last_n is not None:
+        fname += f'_{last_n}.jpg'
+    else:
+        fname += '.jpg'
+    path = os.path.join(PLT_PATH, fname)
+    plt.gcf().autofmt_xdate()
+    plt.savefig(path)
+    return path
