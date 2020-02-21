@@ -21,7 +21,7 @@ async def test_list(request):
 
     if query_str:
         query_str = "WHERE " + query_str
-    rows = DB.execute("SELECT * FROM tests "+qurey_str + " ORDER BY id")
+    rows = DB.execute("SELECT * FROM tests " + query_str + " ORDER BY id")
     res = []
     for row in rows:
         res.append(dict(row))
