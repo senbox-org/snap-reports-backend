@@ -4,10 +4,14 @@ Support file
 import sqlite3
 from sanic import Sanic
 from sanic.response import text, json
+import sys
 
+if len(sys.argv) < 2:
+    print("Missing configuration file")
+    sys.exit(1)
 
 APP = Sanic('SNAP Reports')
-APP.config.from_pyfile('config')
+APP.config.from_pyfile(sys.argv[1])
 
 DB = sqlite3.connect(APP.config.DB_FILE)
 DB.row_factory = sqlite3.Row
