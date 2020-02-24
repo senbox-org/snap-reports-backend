@@ -50,6 +50,14 @@ async def get_test_summary(_, test):
         return text("Option not valid", status=500)
     return performances.test_summary(test_id)
 
+@APP.route("/api/test/<test>/summary/<tag:string>")
+async def get_test_summary_by_tag(_, test, tag):
+    """Retrieve test performances summary."""
+    test_id = support.get_test_id(test)
+    if test_id is None:
+        return text("Option not valid", status=500)
+    return performances.test_summary(test_id, tag)
+
 
 @APP.route("/api/references")
 async def get_references(_):
@@ -89,7 +97,7 @@ async def get_history(request, test, field, tag):
     return performances.history(test_id, tag, field, last_n)
 
 
-@APP.route("/api/test/<test>/history/<field:string>/<tag:string>/plot")
+@APP.route("/api/test/<test>/history/<field:string>/plot/<tag:string>")
 async def get_history_plot(request, test, field, tag):
     """Return history plot."""
     test_id = support.get_test_id(test)
@@ -103,10 +111,22 @@ async def get_history_plot(request, test, field, tag):
         return text("Field not found", status=404)
     return await response.file_stream(res)
 
+@APP.route("/api/test/<test>/history/<field:string>/plot/relative/<tag:string>/<reference:string>")
+async def get_relative_plot(request, test, field, tag, reference):
+    """Return relative plot."""
+    test_id = support.get_test_id(test)
+    if test_id is None:
+        return text("Test not found", status=404)
+    last_n = None
+    if 'max' in request.args:
+        last_n = int(request.args['max'][0])
+    res = performances.relative_plot(test_id, tag, reference, field, last_n)
+    if res is None:
+        return text("Field not found", status=404)
+    return await response.file_stream(res)
 
-@APP.route("/api/test/<test>/history/<field:string>/<tag:string>/plot/moving_average/<num:int>")
-async def get_history_moving_avg_plot(request, test, field, tag, num):
-    """Return moving average plot."""
+
+async def __moving_average_plot__(request, test, field, tag, num=10, rel=None):
     test_id = support.get_test_id(test)
     if test_id is None:
         return text("Test not found", status=404)
@@ -115,13 +135,36 @@ async def get_history_moving_avg_plot(request, test, field, tag, num):
     compare = False
     if 'max' in request.args:
         last_n = int(request.args['max'][0])
-    if 'compare' in request.args:
-        compare = request.args['compare'][0].lower() == 'true'
-    res = performances.history_plot_moving_average(test_id, tag, field, window,
-                                                   last_n, compare)
+    if rel is None:
+        if 'compare' in request.args:
+            compare = request.args['compare'][0].lower() == 'true'
+        res = performances.history_plot_moving_average(test_id, tag, field,
+                                                       window, last_n, compare)
+    else:
+        res = performances.relative_plot(test_id, tag, rel, field, last_n,
+                                         window)
     if res is None:
         return text("Field not found", status=404)
     return await response.file_stream(res)
+
+
+@APP.route("/api/test/<test>/history/<field:string>/plot/relative/<tag:string>/<reference:string>/<num:int>")
+async def get_relative_plot_moving(request, test, field, tag, reference, num):
+    """Return relative plot."""
+    return await __moving_average_plot__(request, test, field, tag, num,
+                                         reference)
+
+
+@APP.route("/api/test/<test>/history/<field:string>/plot/moving_average/<tag:string>/<num:int>")
+async def get_history_moving_avg_plot(request, test, field, tag, num):
+    """Return moving average plot."""
+    return await __moving_average_plot__(request, test, field, tag, num=num)
+
+
+@APP.route("/api/test/<test>/history/<field:string>/plot/moving_average/<tag:string>")
+async def get_history_moving_avg_plot_default(request, test, field, tag):
+    """Plot history moving average with default value."""
+    return await __moving_average_plot__(request, test, field, tag)
 
 
 @APP.route("/api/test/author/<name:string>")

@@ -93,21 +93,39 @@ def __parse_results__(rows):
     return json(res)
 
 
-def test_summary(test_id):
+def test_summary(test_id, tag=None):
     """Get test summary."""
     if test_id is None:
         return text("Test not found", status=404)
-    rows = DB.execute(f"""
+    query = f"""
     SELECT
         result, duration, cpu_time, cpu_usage_avg, memory_avg, memory_max,
         io_write, io_read, threads_avg
     FROM results
     WHERE test={test_id}
-    """)
+    """
+    if tag is not None:
+        query += f"""
+        AND job IN
+            (SELECT ID FROM jobs WHERE dockerTag =
+                (SELECT ID FROM dockerTags WHERE name='snap:{tag}'));"""
+    rows = DB.execute(query)
     rows = rows.fetchall()
     if not rows:
         return text("No rows found", status=500)
     return __parse_results__(rows)
+
+
+def __get_test_name__(test_id):
+    rows = DB.execute(f"""
+        SELECT name
+        FROM tests
+        WHERE id = '{test_id}';
+    """)
+    row = rows.fetchone()
+    if not row:
+        return None
+    return row[0]
 
 
 def __get_reference__(test_id, field):
@@ -167,6 +185,27 @@ def __history__(test_id, tag, field, last_n):
     return date, value
 
 
+def __history_plt_ready__(test_id, tag, field, last_n):
+    date, value = __history__(test_id, tag, field, last_n)
+    xaxis = dates.datestr2num(date)
+    return xaxis, value
+
+
+def __history_mean_value__(test_id, tag, field, last_n):
+    _, value = __history__(test_id, tag, field, last_n)
+    return np.mean(value)
+
+
+def __history_moving_avg__(test_id, tag, field, last_n, window):
+    date, value = __history_plt_ready__(test_id, tag, field, last_n)
+    sub_x = []
+    sub_y = []
+    for i in range(window, len(date)):
+        sub_x.append(np.mean(date[i-window:i]))
+        sub_y.append(np.mean(value[i-window:i]))
+    return sub_x, sub_y
+
+
 def history(test_id, tag, field, last_n=None):
     """Retrive the historic values of a specific field of a given test."""
     field = field.lower()
@@ -185,11 +224,11 @@ def history_plot(test_id, tag, field, last_n=None):
     field = field.lower()
     if field not in FIELDS:
         return None
+    test = __get_test_name__(test_id)
     reference = __get_reference__(test_id, field)
-    date, value = __history__(test_id, tag, field, last_n)
-    xaxis = dates.datestr2num(date)
+    date, value = __history_plt_ready__(test_id, tag, field, last_n)
     plt.figure()
-    plt.plot_date(xaxis, value, ls='-', marker='.', xdate=True, tz=None,
+    plt.plot_date(date, value, ls='-', marker='.', xdate=True, tz=None,
                   label='historic values')
     if reference:
         plt.axhline(reference, c='C2', ls='--', alpha=0.5,
@@ -199,8 +238,9 @@ def history_plot(test_id, tag, field, last_n=None):
     plt.ylabel(field)
     plt.gcf().autofmt_xdate()
     plt.legend()
+    plt.title(f'{test} - {tag}:{field}\nHistoric values')
     plt.grid(alpha=0.5)
-    fname = f'plot_{test_id}_{field}'
+    fname = f'plot_{tag}_{test_id}_{field}'
     if last_n is not None:
         fname += f'_{last_n}.jpg'
     else:
@@ -217,19 +257,15 @@ def history_plot_moving_average(test_id, tag, field, window, last_n=None,
     if field not in FIELDS:
         return None
     reference = __get_reference__(test_id, field)
-    date, value = __history__(test_id, tag, field, last_n)
-    avg = np.mean(value)
-    xaxis = dates.datestr2num(date)
-    sub_x = []
-    sub_y = []
-    for i in range(window, len(xaxis)):
-        sub_x.append(np.mean(xaxis[i-window:i]))
-        sub_y.append(np.mean(value[i-window:i]))
+    test = __get_test_name__(test_id)
+    date, value = __history_moving_avg__(test_id, tag, field, last_n, window)
     plt.figure()
+    avg = __history_mean_value__(test_id, tag, field, last_n)
     if compare:
-        plt.plot_date(xaxis, value, ls='-', marker='.', color='C1', xdate=True,
+        xs, ys = __history_plt_ready__(test_id, tag, field, last_n)
+        plt.plot_date(xs, ys, ls='-', marker='.', color='C1', xdate=True,
                       tz=None, alpha=0.8, label='raw values')
-    plt.plot_date(sub_x, sub_y, ls='-', marker='.', color='C0', xdate=True,
+    plt.plot_date(date, value, ls='-', marker='.', color='C0', xdate=True,
                   tz=None, label='moving average')
     if reference:
         plt.axhline(reference, c='C2', ls='--', alpha=0.5,
@@ -237,10 +273,54 @@ def history_plot_moving_average(test_id, tag, field, window, last_n=None,
     plt.axhline(avg, ls='--', alpha=0.5, c='C0', label='average')
     plt.xlabel("date")
     plt.ylabel(field)
-    plt.grid(alpha=0.5)
     plt.gcf().autofmt_xdate()
+    plt.grid(alpha=0.5)
+    plt.title(f'{test} - {tag}:{field}\nMoving average ({window}) ')
     plt.legend()
-    fname = f'plot_{test_id}_{field}'
+    fname = f'moving_average_{tag}_{window}_{test_id}_{field}'
+    if last_n is not None:
+        fname += f'_{last_n}.jpg'
+    else:
+        fname += '.jpg'
+    path = os.path.join(PLT_PATH, fname)
+    plt.savefig(path)
+    return path
+
+
+def relative_plot(test_id, tag, reference_tag, field, last_n=None, window=0):
+    """Plot historic relatives values of a field of a given test."""
+    field = field.lower()
+    if field not in FIELDS:
+        return None
+    test = __get_test_name__(test_id)
+    if window > 1:
+        date, value = __history_moving_avg__(test_id, tag, field, last_n,
+                                             window)
+    else:
+        date, value = __history_plt_ready__(test_id, tag, field, last_n)
+
+    if reference_tag == 'mean':
+        reference = np.mean(value)
+    else:
+        if reference_tag == 'reference':
+            reference_tag = 'ref7'
+        _, reference = __history__(test_id, reference_tag, field, last_n)
+        reference = np.mean(reference)
+
+    value = (value-reference)/reference * 100
+    average = np.mean(value)
+
+    plt.figure()
+    plt.plot_date(date, value, ls='-', marker='.', color='C0',
+                  tz=None, label='relative value (%)')
+    plt.axhline(average, ls='--', c='C0', label='average')
+    plt.xlabel("date")
+    plt.ylabel(f'{field} (%)')
+    plt.title(f'{test} - {field}\n{tag} relative to {reference_tag}')
+    plt.gcf().autofmt_xdate()
+    plt.grid(alpha=0.5)
+    plt.legend()
+    fname = f'relateive_{tag}_{reference_tag}_{test_id}_{field}'
     if last_n is not None:
         fname += f'_{last_n}.jpg'
     else:
