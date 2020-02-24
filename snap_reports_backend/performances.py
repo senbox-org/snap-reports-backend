@@ -201,9 +201,9 @@ def history_plot(test_id, tag, field, last_n=None):
     plt.plot_date(xaxis, value, ls='-', marker='.', xdate=True, tz=None,
                   label='historic values')
     if reference:
-        plt.axhline(reference, c='black', ls='--', alpha=0.5,
+        plt.axhline(reference, c='C2', ls='--', alpha=0.5,
                     label='reference')
-    plt.axhline(np.mean(value), ls='--', alpha=0.5, c='C2', label='average')
+    plt.axhline(np.mean(value), ls='--', alpha=0.5, c='C0', label='average')
     plt.xlabel("date")
     plt.ylabel(field)
     plt.gcf().autofmt_xdate()
@@ -243,14 +243,14 @@ def history_plot_moving_average(test_id, tag, field, window, last_n=None,
     plt.plot_date(sub_x, sub_y, ls='-', marker='.', color='C0', xdate=True,
                   tz=None, label='moving average')
     if reference:
-        plt.axhline(reference, c='black', ls='--', alpha=0.5,
+        plt.axhline(reference, c='C2', ls='--', alpha=0.5,
                     label='reference')
-    plt.axhline(avg, ls='--', alpha=0.5, c='C2', label='average')
+    plt.axhline(avg, ls='--', alpha=0.5, c='C0', label='average')
     plt.xlabel("date")
     plt.ylabel(field)
+    plt.grid(alpha=0.5)
     plt.gcf().autofmt_xdate()
     plt.legend()
-    plt.grid(alpha=0.5)
     fname = f'plot_{test_id}_{field}'
     if last_n is not None:
         fname += f'_{last_n}.jpg'
