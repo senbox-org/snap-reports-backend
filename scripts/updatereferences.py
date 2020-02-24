@@ -76,7 +76,7 @@ if __name__ == "__main__":
     for row in rows:
         test_id = row['test']
         if test_id not in tests:
-            tests[test_id] = row
+            tests[test_id] = dict(row)
             tests_counter[test_id] = 1
         else:
             tests[test_id] = __sum_tests__(tests[test_id], row)
