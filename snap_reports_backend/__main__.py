@@ -84,8 +84,8 @@ async def get_test_reference(_, test):
     return performances.test_reference(test_id)
 
 
-@APP.route("/api/test/<test>/history/<field:string>")
-async def get_history(request, test, field):
+@APP.route("/api/test/<test>/history/<field:string>/<tag:string>")
+async def get_history(request, test, field, tag):
     """
     Get history
     """
@@ -95,11 +95,11 @@ async def get_history(request, test, field):
     last_n = None
     if 'max' in request.args:
         last_n = int(request.args['max'][0])
-    return performances.history(test_id, field, last_n)
+    return performances.history(test_id, tag, field, last_n)
 
 
-@APP.route("/api/test/<test>/history/<field:string>/plot")
-async def get_history_plot(request, test, field):
+@APP.route("/api/test/<test>/history/<field:string>/<tag:string>/plot")
+async def get_history_plot(request, test, field, tag):
     """
     Returns history plot.
     """
@@ -109,14 +109,14 @@ async def get_history_plot(request, test, field):
     last_n = None
     if 'max' in request.args:
         last_n = int(request.args['max'][0])
-    res = performances.history_plot(test_id, field, last_n)
+    res = performances.history_plot(test_id, tag, field, last_n)
     if res is None:
         return text("Field not found", status=404)
     return await response.file_stream(res)
 
 
-@APP.route("/api/test/<test>/history/<field:string>/plot/moving_average")
-async def get_history_moving_avg_plot(request, test, field):
+@APP.route("/api/test/<test>/history/<field:string>/<tag:string>/plot/moving_average/<num:int>")
+async def get_history_moving_avg_plot(request, test, field, tag, num):
     """
     Returns moving average plot.
     """
@@ -124,15 +124,13 @@ async def get_history_moving_avg_plot(request, test, field):
     if test_id is None:
         return text("Test not found", status=404)
     last_n = None
-    window = 5
+    window = num
     compare = False
-    if 'window' in request.args:
-        window = int(request.args['window'][0])
     if 'max' in request.args:
         last_n = int(request.args['max'][0])
     if 'compare' in request.args:
         compare = request.args['compare'][0].lower() == 'true'
-    res = performances.history_plot_moving_average(test_id, field, window, last_n, compare)
+    res = performances.history_plot_moving_average(test_id, tag, field, window, last_n, compare)
     if res is None:
         return text("Field not found", status=404)
     return await response.file_stream(res)

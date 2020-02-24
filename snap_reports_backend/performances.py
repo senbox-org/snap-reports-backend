@@ -143,13 +143,23 @@ def test_reference(test_id):
     return json(dict(row))
 
 
-def __history__(test_id, field, last_n):
-    query = f"""
-        SELECT start, {field}
-        FROM results
-        WHERE test = '{test_id}' AND result = '1'
-        ORDER BY start DESC
-        """
+def __history__(test_id, tag, field, last_n):
+    if tag.lower() != 'any':
+        query = f"""
+            SELECT start, {field}
+            FROM results
+            WHERE test = '{test_id}' AND result = '1'
+            AND job IN (SELECT id FROM jobs WHERE dockerTag =
+                (SELECT id FROM dockerTags WHERE name='snap:{tag}'))
+            ORDER BY start DESC
+            """
+    else:
+        query = f"""
+            SELECT start, {field}
+            FROM results
+            WHERE test = '{test_id}' AND result = '1'
+            ORDER BY start DESC
+            """
     if last_n is not None:
         query += f" LIMIT {last_n}"
     rows = DB.execute(query)
@@ -161,7 +171,7 @@ def __history__(test_id, field, last_n):
     return date, value
 
 
-def history(test_id, field, last_n=None):
+def history(test_id, tag, field, last_n=None):
     """
     Retrives the historic values of a specific field of a given test.
     """
@@ -169,7 +179,7 @@ def history(test_id, field, last_n=None):
     if field not in FIELDS:
         return text("Field not valid", status=500)
 
-    date, value = __history__(test_id, field, last_n)
+    date, value = __history__(test_id, tag, field, last_n)
     return json({
         'date': date,
         'value': value
@@ -177,7 +187,7 @@ def history(test_id, field, last_n=None):
 
 
 
-def history_plot(test_id, field, last_n=None):
+def history_plot(test_id, tag, field, last_n=None):
     """
     Plot historic values of a field of a given test.
     """
@@ -185,10 +195,10 @@ def history_plot(test_id, field, last_n=None):
     if field not in FIELDS:
         return None
     reference = __get_reference__(test_id, field)
-    date, value = __history__(test_id, field, last_n)
-    xaxis = dates.datestr2num(date) 
+    date, value = __history__(test_id, tag, field, last_n)
+    xaxis = dates.datestr2num(date)
     plt.figure()
-    plt.plot_date(xaxis, value, ls='-', marker='.', xdate=True, tz=None, 
+    plt.plot_date(xaxis, value, ls='-', marker='.', xdate=True, tz=None,
                   label='historic values')
     if reference:
         plt.axhline(reference, c='black', ls='--', alpha=0.5,
@@ -209,7 +219,7 @@ def history_plot(test_id, field, last_n=None):
     return path
 
 
-def history_plot_moving_average(test_id, field, window, last_n=None,
+def history_plot_moving_average(test_id, tag, field, window, last_n=None,
                                 compare=False):
     """
     Plot moving average of historic values of a field of a given test.
@@ -218,7 +228,7 @@ def history_plot_moving_average(test_id, field, window, last_n=None,
     if field not in FIELDS:
         return None
     reference = __get_reference__(test_id, field)
-    date, value = __history__(test_id, field, last_n)
+    date, value = __history__(test_id, tag, field, last_n)
     avg = np.mean(value)
     xaxis = dates.datestr2num(date)
     sub_x = []

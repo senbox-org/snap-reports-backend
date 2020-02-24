@@ -1,3 +1,3 @@
 # SNAP Reports Backend
 
-Simple profile and statistics backend.
+Simple profile and statistics back-end.
