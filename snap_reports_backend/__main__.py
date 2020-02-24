@@ -1,5 +1,8 @@
 """
 Simple backend for SNAP REPORT utility.
+
+author: Martino Ferrari (CS Group)
+email: martino.ferrari@c-s.fr
 """
 from sanic.response import json, text
 from sanic import response
@@ -10,9 +13,7 @@ import performances
 
 @APP.route("/api/test")
 async def test_list(request):
-    """
-    Retrieve list of tests.
-    """
+    """Retrieve list of tests."""
     query_str = ''
     for i, key in enumerate(request.args):
         if i > 0:
@@ -31,9 +32,7 @@ async def test_list(request):
 
 @APP.route("/api/test/<test>")
 async def get_test(_, test):
-    """
-    Retrieve test information.
-    """
+    """Retrieve test information."""
     test_id = support.get_test_id(test)
     if test_id is None:
         return text("Test not found", status=404)
@@ -45,9 +44,7 @@ async def get_test(_, test):
 
 @APP.route("/api/test/<test>/summary")
 async def get_test_summary(_, test):
-    """
-    Retrieve test performances summary.
-    """
+    """Retrieve test performances summary."""
     test_id = support.get_test_id(test)
     if test_id is None:
         return text("Option not valid", status=500)
@@ -56,9 +53,7 @@ async def get_test_summary(_, test):
 
 @APP.route("/api/references")
 async def get_references(_):
-    """
-    Retrieve list of references
-    """
+    """Retrieve list of references."""
     rows = DB.execute("""
     SELECT
         id, test, referenceTag, updated, duration, cpu_time, cpu_usage_avg,
@@ -75,9 +70,7 @@ async def get_references(_):
 
 @APP.route("/api/test/<test>/reference")
 async def get_test_reference(_, test):
-    """
-    Retrieve test reference values.
-    """
+    """Retrieve test reference values."""
     test_id = support.get_test_id(test)
     if test_id is None:
         return text("Test not found", status=404)
@@ -86,9 +79,7 @@ async def get_test_reference(_, test):
 
 @APP.route("/api/test/<test>/history/<field:string>/<tag:string>")
 async def get_history(request, test, field, tag):
-    """
-    Get history
-    """
+    """Get history."""
     test_id = support.get_test_id(test)
     if test_id is None:
         return text("Test not found", status=404)
@@ -100,9 +91,7 @@ async def get_history(request, test, field, tag):
 
 @APP.route("/api/test/<test>/history/<field:string>/<tag:string>/plot")
 async def get_history_plot(request, test, field, tag):
-    """
-    Returns history plot.
-    """
+    """Return history plot."""
     test_id = support.get_test_id(test)
     if test_id is None:
         return text("Test not found", status=404)
@@ -117,9 +106,7 @@ async def get_history_plot(request, test, field, tag):
 
 @APP.route("/api/test/<test>/history/<field:string>/<tag:string>/plot/moving_average/<num:int>")
 async def get_history_moving_avg_plot(request, test, field, tag, num):
-    """
-    Returns moving average plot.
-    """
+    """Return moving average plot."""
     test_id = support.get_test_id(test)
     if test_id is None:
         return text("Test not found", status=404)
@@ -130,7 +117,8 @@ async def get_history_moving_avg_plot(request, test, field, tag, num):
         last_n = int(request.args['max'][0])
     if 'compare' in request.args:
         compare = request.args['compare'][0].lower() == 'true'
-    res = performances.history_plot_moving_average(test_id, tag, field, window, last_n, compare)
+    res = performances.history_plot_moving_average(test_id, tag, field, window,
+                                                   last_n, compare)
     if res is None:
         return text("Field not found", status=404)
     return await response.file_stream(res)
@@ -138,20 +126,17 @@ async def get_history_moving_avg_plot(request, test, field, tag, num):
 
 @APP.route("/api/test/author/<name:string>")
 async def get_test_by_author(_, name):
-    """
-    Retrieve list of tests by author.
-    """
+    """Retrieve list of tests by author."""
     rows = DB.execute(f"SELECT * FROM tests where author='{name}' ORDER BY id")
     res = []
     for row in rows:
         res.append(dict(row))
-    return json({'tests':res})
+    return json({'tests': res})
+
 
 @APP.route("/api/test/tag/<name:string>")
 async def get_test_by_frequency(_, name):
-    """
-    Retrieve list of tests by frequency tag.
-    """
+    """Retrieve list of tests by frequency tag."""
     rows = DB.execute(f"SELECT * FROM tests ORDER BY id")
     res = []
     lowcase = name.lower()
@@ -160,15 +145,12 @@ async def get_test_by_frequency(_, name):
         tag = val['frequency'].lower()
         if lowcase in tag:
             res.append(dict(row))
-    return json({'tests':res})
-
+    return json({'tests': res})
 
 
 @APP.route("/api/testset")
 async def testset_list(_):
-    """
-    Retrieve list of testset.
-    """
+    """Retrieve list of testset."""
     rows = DB.execute("SELECT DISTINCT testset FROM tests")
     res = []
     for row in rows:
@@ -178,10 +160,9 @@ async def testset_list(_):
 
 @APP.route("/api/testset/<name:string>")
 async def testset_test_list(_, name):
-    """
-    Retrieve list of tests of a given testset.
-    """
-    rows = DB.execute(f"SELECT * FROM tests WHERE testset='{name}' ORDER BY id")
+    """Retrieve list of tests of a given testset."""
+    rows = DB.execute(
+        f"SELECT * FROM tests WHERE testset='{name}' ORDER BY id")
     res = []
     for row in rows:
         res.append(dict(row))
@@ -190,9 +171,7 @@ async def testset_test_list(_, name):
 
 @APP.route("/api/job")
 async def job_list(request):
-    """
-    Retrieve list of jobs.
-    """
+    """Retrieve list of jobs."""
     query_str = ''
     for i, key in enumerate(request.args):
         if i > 0:
@@ -215,14 +194,15 @@ async def job_list(request):
 @APP.route("/api/job/tag/<tag:string>")
 async def job_list_by_tag(_, tag):
     """
-    Retrieve list of job of a given frequency tag
+    Retrieve list of job of a given frequency tag.
 
     Parameters:
     -----------
      - tag: frequency tag
     """
     tag = tag.lower()
-    rows = DB.execute(f"SELECT * FROM jobs WHERE LOWER(testScope) = '{tag}' ORDER BY id")
+    rows = DB.execute(
+        f"SELECT * FROM jobs WHERE LOWER(testScope) = '{tag}' ORDER BY id")
     res = []
     for row in rows:
         value = dict(row)
@@ -350,9 +330,7 @@ async def get_job_summary(_, job_id):
 
 @APP.route("/favicon.ico")
 def favicon(_):
-    """
-    solve faviocon warnings
-    """
+    """Solve faviocon warnings."""
     return text("NO ICON", status=404)
 
 

@@ -1,6 +1,4 @@
-"""
-Setup file for SNAP reports backend project.
-"""
+"""Setup file for SNAP reports backend project."""
 import setuptools
 from setuptools import setup
 
@@ -16,7 +14,7 @@ setup(
     url="https://gitlab.com/mandarancio/snap-reports-backend",
     author='Martino Ferrari',
     author_email='martino.ferrari@c-s.fr',
-    packages=setuptools.find_packages(), 
+    packages=setuptools.find_packages(),
     install_requires=['sanic', 'numpy', 'matplotlib'],
     scripts=['scripts/updatereferences.py'],
     python_requires='>=3.6'

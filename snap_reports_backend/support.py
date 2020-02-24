@@ -1,6 +1,4 @@
-"""
-Support functions and utilities.
-"""
+"""Support functions and utilities."""
 import sys
 import sqlite3
 from sanic import Sanic
@@ -40,7 +38,7 @@ def __init_results__():
 
 def get_test(test_id):
     """
-    Retrieves test information.
+    Retrieve test information.
 
     Parameters:
     -----------
@@ -55,7 +53,7 @@ def get_test(test_id):
 
 def get_job(job_id):
     """
-    Retrieves job inforation.
+    Retrieve job inforation.
 
     Paramters:
     ----------
@@ -72,7 +70,11 @@ def get_job(job_id):
 
 def convert_tag(tag_id):
     """
-    Convert dockerTag:id to dockerTag object
+    Convert dockerTag:id to dockerTag object.
+
+    Parameters:
+    -----------
+     - tag_id: tag name
     """
     return {
         "id": tag_id,
@@ -81,9 +83,7 @@ def convert_tag(tag_id):
 
 
 def convert_result(res_id):
-    """
-    Convert result:id to result object
-    """
+    """Convert result:id to result object."""
     return {
         "id": res_id,
         "tag": RESULTS[res_id]
@@ -102,7 +102,8 @@ def __get_first_id__(table):
 
 def get_id(req, table):
     """
-    Useful function to converts request ids to real DB id of a given table.
+    Convert request ids to real DB id of a given table.
+
     In particular it supports `first` and `last` keyword.
     """
     res_id = None
@@ -121,8 +122,10 @@ def get_id(req, table):
 
 def get_test_id(test):
     """
-    Expands get_id function for test table, adding the possibility to retrieve
-    the test information from the test name.
+    Expand get_id function for test table.
+
+    It adds the possibility to retrieve the test information from the test
+    name.
     """
     if isinstance(test, int):
         return test
@@ -142,9 +145,7 @@ def get_test_id(test):
 
 
 def get_job_stats(job_id):
-    """
-    Gets job statistics.
-    """
+    """Get job statistics."""
     job = get_job(job_id)
     if job is None:
         return text("Job do not exist", status=404)

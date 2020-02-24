@@ -94,9 +94,7 @@ def __parse_results__(rows):
 
 
 def test_summary(test_id):
-    """
-    Test summary.
-    """
+    """Get test summary."""
     if test_id is None:
         return text("Test not found", status=404)
     rows = DB.execute(f"""
@@ -125,9 +123,7 @@ def __get_reference__(test_id, field):
 
 
 def test_reference(test_id):
-    """
-    Test summary.
-    """
+    """Get test references values."""
     if test_id is None:
         return text("Test not found", status=404)
     rows = DB.execute(f"""
@@ -172,9 +168,7 @@ def __history__(test_id, tag, field, last_n):
 
 
 def history(test_id, tag, field, last_n=None):
-    """
-    Retrives the historic values of a specific field of a given test.
-    """
+    """Retrive the historic values of a specific field of a given test."""
     field = field.lower()
     if field not in FIELDS:
         return text("Field not valid", status=500)
@@ -186,11 +180,8 @@ def history(test_id, tag, field, last_n=None):
     })
 
 
-
 def history_plot(test_id, tag, field, last_n=None):
-    """
-    Plot historic values of a field of a given test.
-    """
+    """Plot historic values of a field of a given test."""
     field = field.lower()
     if field not in FIELDS:
         return None
@@ -221,9 +212,7 @@ def history_plot(test_id, tag, field, last_n=None):
 
 def history_plot_moving_average(test_id, tag, field, window, last_n=None,
                                 compare=False):
-    """
-    Plot moving average of historic values of a field of a given test.
-    """
+    """Plot moving average of historic values of a field of a given test."""
     field = field.lower()
     if field not in FIELDS:
         return None
