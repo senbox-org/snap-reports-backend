@@ -169,6 +169,17 @@ def get_job_stats(job_id):
     return json({'statistics': res})
 
 
+def get_test_list(branch=None):
+    """Get test list."""
+    query = "SELECT DISTINCT test FROM results WHERE"
+    if branch:
+        query += f""" job IN (SELECT ID FROM jobs WHERE dockerTag = (
+            SELECT ID FROM dockerTags WHERE name = 'snap:{branch}'
+        ))"""
+    rows = DB.execute(query)
+    return [row['test'] for row in rows]
+
+
 # INITILIZE TAGS AND RESULTS TABLES
 TAGS = __init_tags__()
 RESULTS = __init_results__()

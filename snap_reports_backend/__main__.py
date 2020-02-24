@@ -35,10 +35,10 @@ async def get_test(_, test):
     """Retrieve test information."""
     test_id = support.get_test_id(test)
     if test_id is None:
-        return text("Test not found", status=404)
+        return text(f"Test `{test}` not found", status=404)
     res = support.get_test(test_id)
     if res is None:
-        return text("Test not found.", status=404)
+        return text(f"Test `{test}` not found", status=404)
     return json(res)
 
 
@@ -47,17 +47,26 @@ async def get_test_summary(_, test):
     """Retrieve test performances summary."""
     test_id = support.get_test_id(test)
     if test_id is None:
-        return text("Option not valid", status=500)
+        return text(f"Test `{test}` not found", status=404)
     return performances.test_summary(test_id)
+
 
 @APP.route("/api/test/<test>/summary/<tag:string>")
 async def get_test_summary_by_tag(_, test, tag):
     """Retrieve test performances summary."""
     test_id = support.get_test_id(test)
     if test_id is None:
-        return text("Option not valid", status=500)
+        return text(f"Test `{test}` not found", status=404)
     return performances.test_summary(test_id, tag)
 
+
+@APP.route("/api/test/<test>/status/<tag:string>")
+async def get_test_status(_, test, tag):
+    """Get status of a test in of a specific branch."""
+    test_id = support.get_test_id(test)
+    if test_id is None:
+        return text(f"Test `{test}` not found", status=404)
+    return performances.get_status(test_id, tag)
 
 @APP.route("/api/references")
 async def get_references(_):
@@ -371,8 +380,73 @@ async def get_job_summary(_, job_id):
     return json(summary)
 
 
+@APP.route("/api/branch/<tag:string>/summary")
+async def get_branch_summary(_, tag):
+    """Get branch statistics summary."""
+    tests = support.get_test_list(branch=tag)
+    res = {
+        "count": 0,
+        "improved": {
+            'cpu': 0,
+            'memory': 0,
+            'read': 0,
+            'both': 0,
+        },
+        "cpu": {
+            "last": 0,
+            "last10": 0,
+            "average": 0,
+        },
+        "memory": {
+            "last": 0,
+            "last10": 0,
+            "average": 0,
+        },
+        "read": {
+            "last": 0,
+            "last10": 0,
+            "average": 0,
+        }
+    }
+    for test in tests:
+        stat = performances.get_status_dict(test, tag)
+        if stat:
+            res['count'] += 1
+            improved = {'cpu': True, 'memory': True}
+            for key in stat:
+                for sub_key in stat[key]:
+                    if sub_key == 'last10' and stat[key][sub_key] < 0:
+                        improved[key] = False
+                    res[key][sub_key] += stat[key][sub_key]
+            for key in improved:
+                if improved[key]:
+                    res['improved'][key] += 1
+            if all(improved.values()):
+                res['improved']['both'] += 1
+    if res['count']:
+        for key in res['cpu']:
+            res['cpu'][key] /= res['count']
+        for key in res['memory']:
+            res['memory'][key] /= res['count']
+        for key in res['read']:
+            res['read'][key] /= res['count']
+    return json(res)
+
+
+@APP.route("/api/branch/<tag:string>/summary/details")
+async def get_branch_summary_details(_, tag):
+    """Get branch statistics summary."""
+    tests = support.get_test_list(branch=tag)
+    res = []
+    for test in tests:
+        stat = performances.get_status_dict(test, tag)
+        if stat:
+            res.append(stat)
+    return json({'details': res})
+
+
 @APP.route("/favicon.ico")
-def favicon(_):
+async def favicon(_):
     """Solve faviocon warnings."""
     return text("NO ICON", status=404)
 

@@ -328,3 +328,42 @@ def relative_plot(test_id, tag, reference_tag, field, last_n=None, window=0):
     path = os.path.join(PLT_PATH, fname)
     plt.savefig(path)
     return path
+
+
+def get_status_dict(test_id, tag):
+    """Get branch test status."""
+    ref_cpu_time = __get_reference__(test_id, "cpu_time")
+    if ref_cpu_time is None:
+        return None
+    ref_memory = __get_reference__(test_id, "memory_avg")
+    ref_read = __get_reference__(test_id, "io_read")
+    _, cpu_time = __history__(test_id, tag, "cpu_time", None)
+    if not len(cpu_time):
+        return None
+    _, memory = __history__(test_id, tag, "memory_avg", None)
+    _, read = __history__(test_id, tag, 'io_read', None)
+    res = {}
+    res['cpu'] = {
+        'last': (1 - cpu_time[0] / ref_cpu_time) * 100,
+        'last10': (1 - np.mean(cpu_time[:10]) / ref_cpu_time) * 100,
+        'average': (1 - np.mean(cpu_time) / ref_cpu_time) * 100,
+    }
+    res['memory'] = {
+        'last': (1 - memory[0] / ref_memory) * 100,
+        'last10': (1 - np.mean(memory[:10]) / ref_memory) * 100,
+        'average': (1 - np.mean(memory) / ref_memory) * 100,
+    }
+    res['read'] = {
+        'last': (1 - read[0] / ref_read) * 100,
+        'last10': (1 - np.mean(read[:10]) / ref_read) * 100,
+        'average': (1 - np.mean(read) / ref_read) * 100,
+    }
+    return res
+
+
+def get_status(test_id, tag):
+    """Get branch test status."""
+    res = get_status_dict(test_id, tag)
+    if res is None:
+        return text("No reference values found", status=500)
+    return json(res)
