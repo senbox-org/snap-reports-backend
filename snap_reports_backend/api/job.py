@@ -21,14 +21,14 @@ async def job_list(request):
 
     if query_str:
         query_str = "WHERE " + query_str
-    rows = DB.execute("SELECT * FROM jobs "+query_str + " ORDER BY id")
+    rows = DB.execute("SELECT * FROM jobs "+query_str + " ORDER BY id DESC")
     res = []
     for row in rows:
         value = dict(row)
         value['dockerTag'] = support.convert_tag(value['dockerTag'])
         value['result'] = support.convert_result(value['result'])
         res.append(value)
-    return json({"tests": res})
+    return json({"jobs": res})
 
 
 @job.route("/tag/<tag:string>")
