@@ -176,8 +176,26 @@ def get_test_list(branch=None):
         query += f""" job IN (SELECT ID FROM jobs WHERE dockerTag = (
             SELECT ID FROM dockerTags WHERE name = 'snap:{branch}'
         ))"""
+    query += " ORDER BY ID"
     rows = DB.execute(query)
     return [row['test'] for row in rows]
+
+
+def get_tests(branch=None):
+    """Get full tests."""
+    query = """SELECT * FROM tests WHERE ID IN
+        (SELECT DISTINCT test FROM results WHERE
+    """
+    if branch:
+        query += f""" job IN (SELECT ID FROM jobs WHERE dockerTag = (
+            SELECT ID FROM dockerTags WHERE name = 'snap:{branch}'
+        ))"""
+    query += ") ORDER BY ID"
+    rows = DB.execute(query)
+    res = []
+    for row in rows:
+        res.append(dict(row))
+    return res
 
 
 # INITILIZE TAGS AND RESULTS TABLES

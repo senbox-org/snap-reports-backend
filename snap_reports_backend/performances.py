@@ -140,10 +140,8 @@ def __get_reference__(test_id, field):
     return row[0]
 
 
-def test_reference(test_id):
+def get_test_reference(test_id):
     """Get test references values."""
-    if test_id is None:
-        return text("Test not found", status=404)
     rows = DB.execute(f"""
             SELECT
                 updated, duration, cpu_time, cpu_usage_avg, memory_avg,
@@ -153,8 +151,18 @@ def test_reference(test_id):
         """)
     row = rows.fetchone()
     if not row:
+        return None
+    return dict(row)
+
+
+def test_reference(test_id):
+    """Get test references values."""
+    if test_id is None:
+        return text("Test not found", status=404)
+    res = get_test_reference(test_id)
+    if not res:
         return text("No reference found", status=404)
-    return json(dict(row))
+    return json(res)
 
 
 def __history__(test_id, tag, field, last_n):
@@ -330,7 +338,7 @@ def relative_plot(test_id, tag, reference_tag, field, last_n=None, window=0):
     return path
 
 
-def get_status_dict(test_id, tag):
+def get_status_fulldata_dict(test_id, tag):
     """Get branch test status."""
     ref_cpu_time = __get_reference__(test_id, "cpu_time")
     if ref_cpu_time is None:
@@ -344,20 +352,37 @@ def get_status_dict(test_id, tag):
     _, read = __history__(test_id, tag, 'io_read', None)
     res = {}
     res['cpu'] = {
-        'last': (1 - cpu_time[0] / ref_cpu_time) * 100,
-        'last10': (1 - np.mean(cpu_time[:10]) / ref_cpu_time) * 100,
-        'average': (1 - np.mean(cpu_time) / ref_cpu_time) * 100,
+        'last': cpu_time[0],
+        'last10': np.mean(cpu_time[:10]),
+        'average': np.mean(cpu_time),
+        'reference': ref_cpu_time
     }
     res['memory'] = {
-        'last': (1 - memory[0] / ref_memory) * 100,
-        'last10': (1 - np.mean(memory[:10]) / ref_memory) * 100,
-        'average': (1 - np.mean(memory) / ref_memory) * 100,
+        'last': memory[0],
+        'last10': np.mean(memory[:10]),
+        'average': np.mean(memory),
+        'reference': ref_memory
     }
     res['read'] = {
-        'last': (1 - read[0] / ref_read) * 100,
-        'last10': (1 - np.mean(read[:10]) / ref_read) * 100,
-        'average': (1 - np.mean(read) / ref_read) * 100,
+        'last': read[0],
+        'last10': np.mean(read[:10]),
+        'average': np.mean(read),
+        'reference': ref_read
     }
+    return res
+
+
+def get_status_dict(test_id, tag):
+    """Get branch test status."""
+    res = get_status_fulldata_dict(test_id, tag)
+    if not res:
+        return None
+    for key in res:
+        ref = res[key]['reference']
+        for subkey in res[key]:
+            if subkey != 'reference':
+                val = res[key][subkey]
+                res[key][subkey] = (1 - val/ref) * 100
     return res
 
 
