@@ -3,6 +3,7 @@ import sys
 import sqlite3
 from sanic import Sanic
 from sanic.response import text, json
+from sanic_cors import CORS
 
 
 # initialization of DB and server app.
@@ -11,6 +12,7 @@ if len(sys.argv) < 2:
     sys.exit(1)
 
 APP = Sanic('SNAP Reports')
+CORS(APP)
 APP.config.from_pyfile(sys.argv[1])
 
 DB = sqlite3.connect(APP.config.DB_FILE)

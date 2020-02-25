@@ -15,7 +15,7 @@ setup(
     author='Martino Ferrari',
     author_email='martino.ferrari@c-s.fr',
     packages=setuptools.find_packages(),
-    install_requires=['sanic', 'numpy', 'matplotlib'],
+    install_requires=['sanic', 'numpy', 'matplotlib', 'sanic-cors'],
     scripts=['scripts/updatereferences.py'],
     python_requires='>=3.6'
 )
