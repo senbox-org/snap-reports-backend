@@ -194,3 +194,43 @@ async def get_job_summary(_, job_id):
         summary['memory']['average'] += row['memory_avg']
     summary['memory']['average'] /= summary['num_tests']
     return json(summary)
+
+
+@job.route("/<job_id>/summary/testsets")
+async def get_testsets_summary(_, job_id):
+    """Get testset summary."""
+    job_id = support.get_id(job_id, 'jobs')
+    if job_id is None:
+        return text("Option not valid", status=500)
+    job = support.get_job(job_id)
+    if job is None:
+        return text("Job do not exist", status=404)
+
+    rows = DB.execute(f"""
+        SELECT
+            test, result, duration, cpu_time, memory_avg, memory_max, io_read,
+            io_write
+        FROM results WHERE job = '{job_id}' ORDER BY test""")
+    passed = 0
+    count = 0
+    summary = {}
+    for row in rows:
+        test = support.get_test(row['test'])
+        testset = test['testset']
+        count += 1
+        if testset not in summary:
+            summary[testset] = []
+        summ = {
+            'ID': test['ID'],
+            'name': test['name'],
+            'result': support.convert_result(row['result'])
+        }
+        if summ['result']['tag'] == 'SUCCESS':
+            passed += 1
+        summary[testset].append(summ)
+
+    return json({
+        'num_tests': count,
+        'passed': passed,
+        'testsets': summary
+    })
