@@ -104,7 +104,7 @@ async def get_job_exec_stat(_, job_id, exec_id):
 
     rows = DB.execute(f"""
         SELECT *
-        FROM results WHERE job = '{job_id}' AND id = '{exec_id}'""")
+        FROM results WHERE job = '{job_id}' AND test = '{exec_id}'""")
     res = None
     for row in rows:
         val = dict(row)

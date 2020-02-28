@@ -4,6 +4,7 @@ from sanic.response import json
 
 import support
 import performances
+from support import DB
 
 branch = Blueprint('api_branch', url_prefix='/branch')
 
@@ -94,3 +95,13 @@ async def get_branch_details(_, tag):
             stat['test'] = test
             res.append(stat)
     return json({'details': res})
+
+
+@branch.route("/list")
+async def get_list(_):
+    """Get list of branches."""
+    rows = DB.execute('SELECT ID, name FROM dockerTags;')
+    res = []
+    for row in rows:
+        res.append(dict(row))
+    return json({'branches': res})

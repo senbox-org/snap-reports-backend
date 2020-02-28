@@ -70,7 +70,7 @@ def __parse_results__(rows):
             'average': np.mean(cpu_usage),
             'std': np.std(cpu_usage),
         },
-        'memory': {
+        'memory_avg': {
             'average': np.mean(memory),
             'std': np.std(memory),
             'max': max(memory_max)
@@ -80,7 +80,7 @@ def __parse_results__(rows):
             'std': np.std(io_read),
             'min': min(io_read)
         },
-        'io_wrtie': {
+        'io_write': {
             'average': np.mean(io_write),
             'std': np.std(io_write),
             'min': min(io_write)
