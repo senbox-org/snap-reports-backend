@@ -223,7 +223,16 @@ async def get_testsets_summary(_, job_id):
         summ = {
             'ID': test['ID'],
             'name': test['name'],
-            'result': support.convert_result(row['result'])
+            'result': support.convert_result(row['result']),
+            'profile': {
+                    'duration': row['duration'],
+                    'cpu_time': row['cpu_time'],
+                    'memory_max': row['memory_max'],
+                    'memory_avg': row['memory_avg'],
+                    'io_read': row['io_read'],
+                    'io_write': row['io_write'],
+                },
+            'reference': performances.get_test_reference(test['ID'])
         }
         if summ['result']['tag'] == 'SUCCESS':
             passed += 1
