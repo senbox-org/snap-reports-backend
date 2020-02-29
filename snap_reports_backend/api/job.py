@@ -2,11 +2,22 @@
 from sanic import Blueprint
 from sanic.response import json, text
 
+import csv
+
 from support import DB
 import support
 import performances
 
 job = Blueprint('api_job', url_prefix='/job')
+
+
+def __convert_csv__(data):
+    string = data.decode('utf-8')
+    reader = csv.reader(string.splitlines()[2:], delimiter=',')
+    rows = []
+    for row in reader:
+        rows.append(row)
+    return rows
 
 
 @job.route("/list")
@@ -98,8 +109,8 @@ async def get_job_exec_stat(_, job_id, exec_id):
 
     if job_id is None:
         return text("Job option non valid", status=500)
-    job = support.get_job(job_id)
-    if job is None:
+    job_obj = support.get_job(job_id)
+    if job_obj is None:
         return text("Job do not exist", status=404)
 
     rows = DB.execute(f"""
@@ -110,7 +121,8 @@ async def get_job_exec_stat(_, job_id, exec_id):
         val = dict(row)
         val['result'] = support.convert_result(val['result'])
         val['test'] = support.get_test(val['test'])
-        val['job'] = job
+        val['job'] = job_obj
+        val['raw_data'] = __convert_csv__(val['raw_data'])
         res = val
 
     if not res:
@@ -130,8 +142,8 @@ async def get_job_summary(_, job_id):
     job_id = support.get_id(job_id, 'jobs')
     if job_id is None:
         return text("Option not valid", status=500)
-    job = support.get_job(job_id)
-    if job is None:
+    job_obj = support.get_job(job_id)
+    if job_obj is None:
         return text("Job do not exist", status=404)
 
     rows = DB.execute(f"""
@@ -202,8 +214,8 @@ async def get_testsets_summary(_, job_id):
     job_id = support.get_id(job_id, 'jobs')
     if job_id is None:
         return text("Option not valid", status=500)
-    job = support.get_job(job_id)
-    if job is None:
+    job_obj = support.get_job(job_id)
+    if job_obj is None:
         return text("Job do not exist", status=404)
 
     rows = DB.execute(f"""
@@ -225,13 +237,13 @@ async def get_testsets_summary(_, job_id):
             'name': test['name'],
             'result': support.convert_result(row['result']),
             'profile': {
-                    'duration': row['duration'],
-                    'cpu_time': row['cpu_time'],
-                    'memory_max': row['memory_max'],
-                    'memory_avg': row['memory_avg'],
-                    'io_read': row['io_read'],
-                    'io_write': row['io_write'],
-                },
+                'duration': row['duration'],
+                'cpu_time': row['cpu_time'],
+                'memory_max': row['memory_max'],
+                'memory_avg': row['memory_avg'],
+                'io_read': row['io_read'],
+                'io_write': row['io_write'],
+            },
             'reference': performances.get_test_reference(test['ID'])
         }
         if summ['result']['tag'] == 'SUCCESS':
