@@ -97,6 +97,21 @@ async def get_branch_details(_, tag):
     return json({'details': res})
 
 
+@branch.route("/<tag:string>/last_job")
+async def get_branch_last_job(_, tag):
+    """Get last job of a given branch."""
+    rows = DB.execute(f'''
+        SELECT jobs.ID, jobs.jobnum, jobs.timestamp_start, jobs.testScope, 
+            resultTags.tag
+        FROM jobs
+        INNER JOIN resultTags ON jobs.result = resultTags.ID
+        WHERE jobs.dockerTag =
+            (SELECT ID FROM dockerTags WHERE name='snap:{tag}')
+        ORDER BY jobs.ID DESC LIMIT 1;''')
+    res = rows.fetchone()
+    return json(dict(res))
+
+
 @branch.route("/list")
 async def get_list(_):
     """Get list of branches."""
