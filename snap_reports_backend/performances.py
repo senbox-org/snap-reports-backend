@@ -50,46 +50,49 @@ def __parse_results__(rows):
             skipped += 1
         else:
             failed += 1
-    res = {
-        'executions': len(rows),
-        'results': {
-            'passed': passed,
-            'skipped': skipped,
-            'failed': failed
-        },
-        'duration': {
-            'average': np.mean(duration),
-            'std': np.std(duration),
-            'min': min(duration)
-        },
-        'cpu_time': {
-            'average': np.mean(cpu_time),
-            'std': np.std(cpu_time),
-        },
-        'cpu_usage': {
-            'average': np.mean(cpu_usage),
-            'std': np.std(cpu_usage),
-        },
-        'memory_avg': {
-            'average': np.mean(memory),
-            'std': np.std(memory),
-            'max': max(memory_max)
-        },
-        'io_read': {
-            'average': np.mean(io_read),
-            'std': np.std(io_read),
-            'min': min(io_read)
-        },
-        'io_write': {
-            'average': np.mean(io_write),
-            'std': np.std(io_write),
-            'min': min(io_write)
-        },
-        'thread_num': {
-            'average': np.mean(threads),
-            'std': np.std(threads)
+
+    res = {'executions': 0, 'results': {'passed': 0, 'skipped': 0, 'failed': 0}}
+    if len(duration) > 0:
+        res = {
+            'executions': len(rows),
+            'results': {
+                'passed': passed,
+                'skipped': skipped,
+                'failed': failed
+            },
+            'duration': {
+                'average': np.mean(duration),
+                'std': np.std(duration),
+                'min': min(duration)
+            },
+            'cpu_time': {
+                'average': np.mean(cpu_time),
+                'std': np.std(cpu_time),
+            },
+            'cpu_usage': {
+                'average': np.mean(cpu_usage),
+                'std': np.std(cpu_usage),
+            },
+            'memory_avg': {
+                'average': np.mean(memory),
+                'std': np.std(memory),
+                'max': max(memory_max)
+            },
+            'io_read': {
+                'average': np.mean(io_read),
+                'std': np.std(io_read),
+                'min': min(io_read)
+            },
+            'io_write': {
+                'average': np.mean(io_write),
+                'std': np.std(io_write),
+                'min': min(io_write)
+            },
+            'thread_num': {
+                'average': np.mean(threads),
+                'std': np.std(threads)
+            }
         }
-    }
     return json(res)
 
 
@@ -223,6 +226,19 @@ def history(test_id, tag, field, last_n=None):
     date, value = __history__(test_id, tag, field, last_n)
     return json({
         'date': date,
+        'value': value
+    })
+
+
+def history_ma(test_id, tag, field, num, last_n=None):
+    """Retrive the historic values of a specific field of a given test."""
+    field = field.lower()
+    if field not in FIELDS:
+        return text("Field not valid", status=500)
+
+    date, value = __history_moving_avg__(test_id, tag, field, last_n, num)
+    return json({
+        'date':  [x.strftime('%Y-%m-%d %H:%M:%S') for x in dates.num2date(date)],
         'value': value
     })
 
@@ -379,11 +395,12 @@ def get_status_dict(test_id, tag):
     if not res:
         return None
     for key in res:
-        ref = res[key]['reference']
-        for subkey in res[key]:
-            if subkey != 'reference':
-                val = res[key][subkey]
-                res[key][subkey] = (1 - val/ref) * 100
+        if isinstance(res[key], dict):
+            ref = res[key]['reference']
+            for subkey in res[key]:
+                if subkey != 'reference':
+                    val = res[key][subkey]
+                    res[key][subkey] = (1 - val/ref) * 100
     return res
 
 

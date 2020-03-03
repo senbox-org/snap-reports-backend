@@ -88,6 +88,18 @@ async def get_history(request, test, field, tag):
     return performances.history(test_id, tag, field, last_n)
 
 
+@test.route("/<test>/moving_average/<field:string>/<tag:string>/<num:int>")
+async def get_history_moving_avg(request, test, field, tag, num):
+    """Get history."""
+    test_id = support.get_test_id(test)
+    if test_id is None:
+        return text("Test not found", status=404)
+    last_n = None
+    if 'max' in request.args:
+        last_n = int(request.args['max'][0])
+    return performances.history_ma(test_id, tag, field, num, last_n)
+
+
 @test.route("/<test>/history/<field:string>/plot/<tag:string>")
 async def get_history_plot(request, test, field, tag):
     """Return history plot."""

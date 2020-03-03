@@ -47,11 +47,12 @@ async def get_branch_summary(_, tag):
             res['count'] += 1
             improved = {'cpu': True, 'memory': True}
             for key in stat:
-                for sub_key in stat[key]:
-                    if sub_key == 'last10' and stat[key][sub_key] < 0:
-                        improved[key] = False
-                    if sub_key in res[key]:
-                        res[key][sub_key] += stat[key][sub_key]
+                if isinstance(stat[key], dict):
+                    for sub_key in stat[key]:
+                        if sub_key == 'last10' and stat[key][sub_key] < 0:
+                            improved[key] = False
+                        if sub_key in res[key]:
+                            res[key][sub_key] += stat[key][sub_key]
             for key in improved:
                 if improved[key]:
                     res['improved'][key] += 1
