@@ -369,6 +369,7 @@ def get_status_fulldata_dict(test_id, tag):
         'average': np.mean(read),
         'reference': ref_read
     }
+    res['executions'] = len(cpu_time)
     return res
 
 

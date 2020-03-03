@@ -120,3 +120,18 @@ async def get_list(_):
     for row in rows:
         res.append(dict(row))
     return json({'branches': res})
+
+
+@branch.route("/<tag:string>/njobs")
+async def get_branch_njobs(_, tag):
+    """Get number of jobs executed of a given branch."""
+    rows = DB.execute(f'''
+        SELECT COUNT(ID) 
+        FROM jobs
+        WHERE dockerTag = (
+            SELECT ID 
+            FROM dockerTags
+            WHERE name='snap:{tag}'
+        );''')
+    row = rows.fetchone()
+    return json({'njobs': row[0]})

@@ -184,3 +184,38 @@ async def get_test_by_frequency(_, name):
         if lowcase in tag:
             res.append(dict(row))
     return json({'tests': res})
+
+
+@test.route('/<tag>/count')
+async def get_test_exec_count(_, tag):
+    """Get number of execution of a given test."""
+    test_id = support.get_test_id(tag)
+    if test_id is None:
+        return text(f"Test `{tag}` not found", status=404)
+    rows = DB.execute(f'''
+        SELECT COUNT(ID)
+        FROM jobs
+        WHERE ID IN
+            (SELECT job FROM results WHERE test = '{test_id}');
+        ''')
+    row = rows.fetchone()
+    return json({'count': row[0]})
+
+
+@test.route('/<tag>/last_job')
+async def get_test_last_job(_, tag):
+    """Get last job of a given test."""
+    test_id = support.get_test_id(tag)
+    if test_id is None:
+        return text(f"Test `{tag}` not found", status=404)
+    rows = DB.execute(f'''
+        SELECT jobs.*, resultTags.tag, dockerTags.name
+        FROM jobs 
+        INNER JOIN resultTags ON jobs.result = resultTags.ID
+        INNER JOIN dockerTags ON jobs.dockerTag = dockerTags.ID
+        WHERE jobs.ID IN 
+            (SELECT job FROM results WHERE test = '{test_id}')
+        ORDER BY jobs.ID DESC LIMIT 1;
+        ''')
+    row = rows.fetchone()
+    return json(dict(row))
