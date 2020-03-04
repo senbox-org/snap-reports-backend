@@ -1,19 +1,16 @@
 """
-Perforamnces and plots functions.
+Perforamnces and stats functions.
 
 author: Martino Ferrari (CS Group)
 email: martino.ferrari@c-s.fr
 """
 import os
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.dates as dates
 from sanic.response import text, json
 
 from support import DB
 
 CWD = os.path.abspath(os.getcwd())
-PLT_PATH = os.path.join(CWD, 'plots')
 
 if not os.path.isdir(PLT_PATH):
     os.mkdir(PLT_PATH)
@@ -241,117 +238,6 @@ def history_ma(test_id, tag, field, num, last_n=None):
         'date':  [x.strftime('%Y-%m-%d %H:%M:%S') for x in dates.num2date(date)],
         'value': value
     })
-
-
-def history_plot(test_id, tag, field, last_n=None):
-    """Plot historic values of a field of a given test."""
-    field = field.lower()
-    if field not in FIELDS:
-        return None
-    test = __get_test_name__(test_id)
-    reference = __get_reference__(test_id, field)
-    date, value = __history_plt_ready__(test_id, tag, field, last_n)
-    plt.figure()
-    plt.plot_date(date, value, ls='-', marker='.', xdate=True, tz=None,
-                  label='historic values')
-    if reference:
-        plt.axhline(reference, c='C2', ls='--', alpha=0.5,
-                    label='reference')
-    plt.axhline(np.mean(value), ls='--', alpha=0.5, c='C0', label='average')
-    plt.xlabel("date")
-    plt.ylabel(field)
-    plt.gcf().autofmt_xdate()
-    plt.legend()
-    plt.title(f'{test} - {tag}:{field}\nHistoric values')
-    plt.grid(alpha=0.5)
-    fname = f'plot_{tag}_{test_id}_{field}'
-    if last_n is not None:
-        fname += f'_{last_n}.jpg'
-    else:
-        fname += '.jpg'
-    path = os.path.join(PLT_PATH, fname)
-    plt.savefig(path)
-    return path
-
-
-def history_plot_moving_average(test_id, tag, field, window, last_n=None,
-                                compare=False):
-    """Plot moving average of historic values of a field of a given test."""
-    field = field.lower()
-    if field not in FIELDS:
-        return None
-    reference = __get_reference__(test_id, field)
-    test = __get_test_name__(test_id)
-    date, value = __history_moving_avg__(test_id, tag, field, last_n, window)
-    plt.figure()
-    avg = __history_mean_value__(test_id, tag, field, last_n)
-    if compare:
-        xs, ys = __history_plt_ready__(test_id, tag, field, last_n)
-        plt.plot_date(xs, ys, ls='-', marker='.', color='C1', xdate=True,
-                      tz=None, alpha=0.8, label='raw values')
-    plt.plot_date(date, value, ls='-', marker='.', color='C0', xdate=True,
-                  tz=None, label='moving average')
-    if reference:
-        plt.axhline(reference, c='C2', ls='--', alpha=0.5,
-                    label='reference')
-    plt.axhline(avg, ls='--', alpha=0.5, c='C0', label='average')
-    plt.xlabel("date")
-    plt.ylabel(field)
-    plt.gcf().autofmt_xdate()
-    plt.grid(alpha=0.5)
-    plt.title(f'{test} - {tag}:{field}\nMoving average ({window}) ')
-    plt.legend()
-    fname = f'moving_average_{tag}_{window}_{test_id}_{field}'
-    if last_n is not None:
-        fname += f'_{last_n}.jpg'
-    else:
-        fname += '.jpg'
-    path = os.path.join(PLT_PATH, fname)
-    plt.savefig(path)
-    return path
-
-
-def relative_plot(test_id, tag, reference_tag, field, last_n=None, window=0):
-    """Plot historic relatives values of a field of a given test."""
-    field = field.lower()
-    if field not in FIELDS:
-        return None
-    test = __get_test_name__(test_id)
-    if window > 1:
-        date, value = __history_moving_avg__(test_id, tag, field, last_n,
-                                             window)
-    else:
-        date, value = __history_plt_ready__(test_id, tag, field, last_n)
-
-    if reference_tag == 'mean':
-        reference = np.mean(value)
-    else:
-        if reference_tag == 'reference':
-            reference_tag = 'ref7'
-        _, reference = __history__(test_id, reference_tag, field, last_n)
-        reference = np.mean(reference)
-
-    value = (value-reference)/reference * 100
-    average = np.mean(value)
-
-    plt.figure()
-    plt.plot_date(date, value, ls='-', marker='.', color='C0',
-                  tz=None, label='relative value (%)')
-    plt.axhline(average, ls='--', c='C0', label='average')
-    plt.xlabel("date")
-    plt.ylabel(f'{field} (%)')
-    plt.title(f'{test} - {field}\n{tag} relative to {reference_tag}')
-    plt.gcf().autofmt_xdate()
-    plt.grid(alpha=0.5)
-    plt.legend()
-    fname = f'relateive_{tag}_{reference_tag}_{test_id}_{field}'
-    if last_n is not None:
-        fname += f'_{last_n}.jpg'
-    else:
-        fname += '.jpg'
-    path = os.path.join(PLT_PATH, fname)
-    plt.savefig(path)
-    return path
 
 
 def get_status_fulldata_dict(test_id, tag):

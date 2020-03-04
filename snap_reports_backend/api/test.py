@@ -1,6 +1,6 @@
 """Implement api/test apis."""
 from sanic import Blueprint
-from sanic.response import json, text, file_stream
+from sanic.response import json, text
 
 from support import DB
 import support
@@ -98,80 +98,6 @@ async def get_history_moving_avg(request, test, field, tag, num):
     if 'max' in request.args:
         last_n = int(request.args['max'][0])
     return performances.history_ma(test_id, tag, field, num, last_n)
-
-
-@test.route("/<test>/history/<field:string>/plot/<tag:string>")
-async def get_history_plot(request, test, field, tag):
-    """Return history plot."""
-    test_id = support.get_test_id(test)
-    if test_id is None:
-        return text("Test not found", status=404)
-    last_n = None
-    if 'max' in request.args:
-        last_n = int(request.args['max'][0])
-    res = performances.history_plot(test_id, tag, field, last_n)
-    if res is None:
-        return text("Field not found", status=404)
-    return await file_stream(res)
-
-
-@test.route("/<test>/history/<field:string>/plot/relative/<tag:string>/" +
-            "<reference:string>")
-async def get_relative_plot(request, test, field, tag, reference):
-    """Return relative plot."""
-    test_id = support.get_test_id(test)
-    if test_id is None:
-        return text("Test not found", status=404)
-    last_n = None
-    if 'max' in request.args:
-        last_n = int(request.args['max'][0])
-    res = performances.relative_plot(test_id, tag, reference, field, last_n)
-    if res is None:
-        return text("Field not found", status=404)
-    return await file_stream(res)
-
-
-async def __moving_average_plot__(request, test, field, tag, num=10, rel=None):
-    test_id = support.get_test_id(test)
-    if test_id is None:
-        return text("Test not found", status=404)
-    last_n = None
-    window = num
-    compare = False
-    if 'max' in request.args:
-        last_n = int(request.args['max'][0])
-    if rel is None:
-        if 'compare' in request.args:
-            compare = request.args['compare'][0].lower() == 'true'
-        res = performances.history_plot_moving_average(test_id, tag, field,
-                                                       window, last_n, compare)
-    else:
-        res = performances.relative_plot(test_id, tag, rel, field, last_n,
-                                         window)
-    if res is None:
-        return text("Field not found", status=404)
-    return await file_stream(res)
-
-
-@test.route("/<test>/history/<field:string>/plot/relative/<tag:string>/" +
-            "<reference:string>/<num:int>")
-async def get_relative_plot_moving(request, test, field, tag, reference, num):
-    """Return relative plot."""
-    return await __moving_average_plot__(request, test, field, tag, num,
-                                         reference)
-
-
-@test.route("/<test>/history/<field:string>/plot/moving_average/" +
-            "<tag:string>/<num:int>")
-async def get_history_moving_avg_plot(request, test, field, tag, num):
-    """Return moving average plot."""
-    return await __moving_average_plot__(request, test, field, tag, num=num)
-
-
-@test.route("/<test>/history/<field:string>/plot/moving_average/<tag:string>")
-async def get_history_moving_avg_plot_default(request, test, field, tag):
-    """Plot history moving average with default value."""
-    return await __moving_average_plot__(request, test, field, tag)
 
 
 @test.route("/author/<name:string>")

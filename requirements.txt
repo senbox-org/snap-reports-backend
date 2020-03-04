@@ -1,4 +1,3 @@
 numpy
-matplotlib
 sanic
 sanic-cors
