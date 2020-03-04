@@ -8,12 +8,12 @@ import os
 import numpy as np
 from sanic.response import text, json
 
+from datetime import datetime
+
 from support import DB
 
 CWD = os.path.abspath(os.getcwd())
 
-if not os.path.isdir(PLT_PATH):
-    os.mkdir(PLT_PATH)
 
 FIELDS = ["duration", "cpu_time", "cpu_usage_avg", "cpu_usage_max",
           "memory_avg", "memory_max", "io_read", "io_write", "threads_avg",
@@ -193,19 +193,14 @@ def __history__(test_id, tag, field, last_n):
     return date, value
 
 
-def __history_plt_ready__(test_id, tag, field, last_n):
-    date, value = __history__(test_id, tag, field, last_n)
-    xaxis = dates.datestr2num(date)
-    return xaxis, value
-
-
 def __history_mean_value__(test_id, tag, field, last_n):
     _, value = __history__(test_id, tag, field, last_n)
     return np.mean(value)
 
 
 def __history_moving_avg__(test_id, tag, field, last_n, window):
-    date, value = __history_plt_ready__(test_id, tag, field, last_n)
+    date, value = __history__(test_id, tag, field, last_n)
+    date = [datetime.fromisoformat(x).timestamp() for x in dates]
     sub_x = []
     sub_y = []
     for i in range(window, len(date)):
@@ -235,7 +230,7 @@ def history_ma(test_id, tag, field, num, last_n=None):
 
     date, value = __history_moving_avg__(test_id, tag, field, last_n, num)
     return json({
-        'date':  [x.strftime('%Y-%m-%d %H:%M:%S') for x in dates.num2date(date)],
+        'date':  [datetime.fromtimestamp(x).strftime('%Y-%m-%d %H:%M:%S') for x in dates],
         'value': value
     })
 
