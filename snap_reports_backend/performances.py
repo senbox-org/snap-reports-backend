@@ -200,7 +200,7 @@ def __history_mean_value__(test_id, tag, field, last_n):
 
 def __history_moving_avg__(test_id, tag, field, last_n, window):
     date, value = __history__(test_id, tag, field, last_n)
-    date = [datetime.fromisoformat(x).timestamp() for x in dates]
+    date = [datetime.fromisoformat(x).timestamp() for x in date]
     sub_x = []
     sub_y = []
     for i in range(window, len(date)):
@@ -230,7 +230,7 @@ def history_ma(test_id, tag, field, num, last_n=None):
 
     date, value = __history_moving_avg__(test_id, tag, field, last_n, num)
     return json({
-        'date':  [datetime.fromtimestamp(x).strftime('%Y-%m-%d %H:%M:%S') for x in dates],
+        'date':  [datetime.fromtimestamp(x).strftime('%Y-%m-%d %H:%M:%S') for x in date],
         'value': value
     })
 
