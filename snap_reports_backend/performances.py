@@ -5,7 +5,7 @@ author: Martino Ferrari (CS Group)
 email: martino.ferrari@c-s.fr
 """
 import os
-import numpy as np
+import statistics
 from sanic.response import text, json
 
 from datetime import datetime
@@ -58,36 +58,36 @@ def __parse_results__(rows):
                 'failed': failed
             },
             'duration': {
-                'average': np.mean(duration),
-                'std': np.std(duration),
+                'average': statistics.mean(duration),
+                'std': statistics.stdev(duration),
                 'min': min(duration)
             },
             'cpu_time': {
-                'average': np.mean(cpu_time),
-                'std': np.std(cpu_time),
+                'average': statistics.mean(cpu_time),
+                'std': statistics.stdev(cpu_time),
             },
             'cpu_usage': {
-                'average': np.mean(cpu_usage),
-                'std': np.std(cpu_usage),
+                'average': statistics.mean(cpu_usage),
+                'std': statistics.stdev(cpu_usage),
             },
             'memory_avg': {
-                'average': np.mean(memory),
-                'std': np.std(memory),
+                'average': statistics.mean(memory),
+                'std': statistics.stdev(memory),
                 'max': max(memory_max)
             },
             'io_read': {
-                'average': np.mean(io_read),
-                'std': np.std(io_read),
+                'average': statistics.mean(io_read),
+                'std': statistics.stdev(io_read),
                 'min': min(io_read)
             },
             'io_write': {
-                'average': np.mean(io_write),
-                'std': np.std(io_write),
+                'average': statistics.mean(io_write),
+                'std': statistics.stdev(io_write),
                 'min': min(io_write)
             },
             'thread_num': {
-                'average': np.mean(threads),
-                'std': np.std(threads)
+                'average': statistics.mean(threads),
+                'std': statistics.stdev(threads)
             }
         }
     return json(res)
@@ -195,7 +195,7 @@ def __history__(test_id, tag, field, last_n):
 
 def __history_mean_value__(test_id, tag, field, last_n):
     _, value = __history__(test_id, tag, field, last_n)
-    return np.mean(value)
+    return statistics.mean(value)
 
 
 def __history_moving_avg__(test_id, tag, field, last_n, window):
@@ -204,8 +204,8 @@ def __history_moving_avg__(test_id, tag, field, last_n, window):
     sub_x = []
     sub_y = []
     for i in range(window, len(date)):
-        sub_x.append(np.mean(date[i-window:i]))
-        sub_y.append(np.mean(value[i-window:i]))
+        sub_x.append(statistics.mean(date[i-window:i]))
+        sub_y.append(statistics.mean(value[i-window:i]))
     return sub_x, sub_y
 
 
@@ -250,20 +250,20 @@ def get_status_fulldata_dict(test_id, tag):
     res = {}
     res['cpu'] = {
         'last': cpu_time[0],
-        'last10': np.mean(cpu_time[:10]),
-        'average': np.mean(cpu_time),
+        'last10': statistics.mean(cpu_time[:10]),
+        'average': statistics.mean(cpu_time),
         'reference': ref_cpu_time
     }
     res['memory'] = {
         'last': memory[0],
-        'last10': np.mean(memory[:10]),
-        'average': np.mean(memory),
+        'last10': statistics.mean(memory[:10]),
+        'average': statistics.mean(memory),
         'reference': ref_memory
     }
     res['read'] = {
         'last': read[0],
-        'last10': np.mean(read[:10]),
-        'average': np.mean(read),
+        'last10': statistics.mean(read[:10]),
+        'average': statistics.mean(read),
         'reference': ref_read
     }
     res['executions'] = len(cpu_time)

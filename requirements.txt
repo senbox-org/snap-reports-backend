@@ -1,3 +1,2 @@
-numpy
 sanic
 sanic-cors
