@@ -18,4 +18,8 @@ async def favicon(_):
 
 if __name__ == "__main__":
     APP.blueprint(api)
-    APP.run(host="0.0.0.0", port=APP.config.PORT)
+    APP.run(
+        host="0.0.0.0",
+        port=APP.config.PORT,
+        workers=4,
+        access_log=False)
