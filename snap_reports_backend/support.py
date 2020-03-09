@@ -25,8 +25,21 @@ if APP.config.DB_MODE == 'SQLITE':
     import sqlite3
     DB = sqlite3.connect(APP.config.DB)
     DB.row_factory = sqlite3.Row
+elif APP.config.DB_MODE == 'MYSQL':
+    import pymysql
+    dbusr, dbpwd = APP.config.DB.split('@')[0].split(':')
+    db_name = APP.config.DB.split('@')[1].split('/')[1]
+    host, port = APP.config.DB.split('@')[1].split('/')[0].split(':')
+    DB = pymysql.connect(
+        host=host,
+        port=int(port),
+        user=dbusr,
+        password=dbpwd,
+        db=db_name,
+        cursorclass=pymysql.cursors.DictCursor
+    ).cursor()
 else:
-    print(f'{APP.config.DB_MODE} NOT YET SUPPORTED')
+    print(f'{APP.config.DB_MODE} NOT SUPPORTED')
     sys.exit(1)
 
 TAGS = []
@@ -36,6 +49,7 @@ RESULTS = []
 def __init_tags__():
     rows = DB.execute("SELECT ID, name FROM dockerTags")
     res = {}
+    print(rows)
     for row in rows:
         res[row['id']] = row['name']
     return res
