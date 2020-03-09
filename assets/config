@@ -1,2 +1,3 @@
-DB_FILE = 'assets/reportDB.db'
+DB_MODE = 'SQLITE'
+DB = 'example.db'
 PORT = 9090

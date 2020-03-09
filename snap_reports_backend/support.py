@@ -1,6 +1,6 @@
 """Support functions and utilities."""
 import sys
-import sqlite3
+import os
 from sanic import Sanic
 from sanic.response import text, json
 from sanic_cors import CORS
@@ -13,10 +13,21 @@ if len(sys.argv) < 2:
 
 APP = Sanic('SNAP Reports')
 CORS(APP)
-APP.config.from_pyfile(sys.argv[1])
+CFG_FILE = sys.argv[1]
 
-DB = sqlite3.connect(APP.config.DB_FILE)
-DB.row_factory = sqlite3.Row
+if os.path.exists(CFG_FILE+'.local'):
+    CFG_FILE += '.local'
+
+APP.config.from_pyfile(CFG_FILE)
+
+DB = None
+if APP.config.DB_MODE == 'SQLITE':
+    import sqlite3
+    DB = sqlite3.connect(APP.config.DB)
+    DB.row_factory = sqlite3.Row
+else:
+    print(f'{APP.config.DB_MODE} NOT YET SUPPORTED')
+    sys.exit(1)
 
 TAGS = []
 RESULTS = []
