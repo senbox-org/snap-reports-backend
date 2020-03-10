@@ -109,32 +109,29 @@ def test_summary(test_id, tag=None):
         AND job IN
             (SELECT ID FROM jobs WHERE dockerTag =
                 (SELECT ID FROM dockerTags WHERE name='snap:{tag}'));"""
-    rows = DB.execute(query)
-    rows = rows.fetchall()
+    rows = DB.fetchall(query)
     if not rows:
         return text("No rows found", status=500)
     return __parse_results__(rows)
 
 
 def __get_test_name__(test_id):
-    rows = DB.execute(f"""
+    row = DB.fetchone(f"""
         SELECT name
         FROM tests
         WHERE id = '{test_id}';
     """)
-    row = rows.fetchone()
     if not row:
         return None
     return row[0]
 
 
 def __get_reference__(test_id, field):
-    rows = DB.execute(f"""
+    row = DB.fetchone(f"""
             SELECT {field}
             FROM reference_values
             WHERE test={test_id}
         """)
-    row = rows.fetchone()
     if not row:
         return None
     return row[0]
@@ -142,17 +139,14 @@ def __get_reference__(test_id, field):
 
 def get_test_reference(test_id):
     """Get test references values."""
-    rows = DB.execute(f"""
+    row = DB.fetchone(f"""
             SELECT
                 updated, duration, cpu_time, cpu_usage_avg, memory_avg,
                 memory_max, io_write, io_read, threads_avg
             FROM reference_values
             WHERE test={test_id}
         """)
-    row = rows.fetchone()
-    if not row:
-        return None
-    return dict(row)
+    return row
 
 
 def test_reference(test_id):
@@ -184,7 +178,7 @@ def __history__(test_id, tag, field, last_n):
             """
     if last_n is not None:
         query += f" LIMIT {last_n}"
-    rows = DB.execute(query)
+    rows = DB.fetchall(query)
     value = []
     date = []
     for row in rows:

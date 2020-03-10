@@ -32,10 +32,10 @@ async def job_list(request):
 
     if query_str:
         query_str = "WHERE " + query_str
-    rows = DB.execute("SELECT * FROM jobs "+query_str + " ORDER BY id DESC")
+    rows = DB.fetchall("SELECT * FROM jobs "+query_str + " ORDER BY id DESC")
     res = []
     for row in rows:
-        value = dict(row)
+        value = row
         value['dockerTag'] = support.convert_tag(value['dockerTag'])
         value['result'] = support.convert_result(value['result'])
         res.append(value)
@@ -52,11 +52,11 @@ async def job_list_by_tag(_, tag):
      - tag: frequency tag
     """
     tag = tag.lower()
-    rows = DB.execute(
+    rows = DB.fetchall(
         f"SELECT * FROM jobs WHERE LOWER(testScope) = '{tag}' ORDER BY id")
     res = []
     for row in rows:
-        value = dict(row)
+        value = row
         value['dockerTag'] = support.convert_tag(value['dockerTag'])
         value['result'] = support.convert_result(value['result'])
         res.append(value)
@@ -113,21 +113,16 @@ async def get_job_exec_stat(_, job_id, exec_id):
     if job_obj is None:
         return text("Job do not exist", status=404)
 
-    rows = DB.execute(f"""
+    val = DB.fetchone(f"""
         SELECT *
         FROM results WHERE job = '{job_id}' AND test = '{exec_id}'""")
-    res = None
-    for row in rows:
-        val = dict(row)
+    if val:
         val['result'] = support.convert_result(val['result'])
         val['test'] = support.get_test(val['test'])
         val['job'] = job_obj
         val['raw_data'] = __convert_csv__(val['raw_data'])
-        res = val
-
-    if not res:
-        return text("No results found", status=404)
-    return json(res)
+        return json(val)
+    return text("No results found", status=404)
 
 
 @job.route("/<job_id>/summary")
@@ -146,7 +141,7 @@ async def get_job_summary(_, job_id):
     if job_obj is None:
         return text("Job do not exist", status=404)
 
-    rows = DB.execute(f"""
+    rows = DB.fetchall(f"""
         SELECT
             test, result, duration, cpu_time, memory_avg, memory_max, io_read,
             io_write
@@ -218,7 +213,7 @@ async def get_testsets_summary(_, job_id):
     if job_obj is None:
         return text("Job do not exist", status=404)
 
-    rows = DB.execute(f"""
+    rows = DB.fetchone(f"""
         SELECT
             test, result, duration, cpu_time, memory_avg, memory_max, io_read,
             io_write

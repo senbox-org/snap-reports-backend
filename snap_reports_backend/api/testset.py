@@ -10,7 +10,7 @@ testset = Blueprint('api_testset', url_prefix='/testset')
 @testset.route("/list")
 async def testset_list(_):
     """Retrieve list of testset."""
-    rows = DB.execute("SELECT DISTINCT testset FROM tests")
+    rows = DB.fetchall("SELECT DISTINCT testset FROM tests")
     res = []
     for row in rows:
         res.append(row['testset'])
@@ -20,9 +20,6 @@ async def testset_list(_):
 @testset.route("/<name:string>")
 async def testset_test_list(_, name):
     """Retrieve list of tests of a given testset."""
-    rows = DB.execute(
+    rows = DB.fetchall(
         f"SELECT * FROM tests WHERE testset='{name}' ORDER BY id")
-    res = []
-    for row in rows:
-        res.append(dict(row))
-    return json({"tests": res})
+    return json({"tests": rows})

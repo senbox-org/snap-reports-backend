@@ -4,6 +4,7 @@ import os
 from sanic import Sanic
 from sanic.response import text, json
 from sanic_cors import CORS
+import dbfactory
 
 
 # initialization of DB and server app.
@@ -20,26 +21,9 @@ if os.path.exists(CFG_FILE+'.local'):
 
 APP.config.from_pyfile(CFG_FILE)
 
-DB = None
-if APP.config.DB_MODE == 'SQLITE':
-    import sqlite3
-    DB = sqlite3.connect(APP.config.DB)
-    DB.row_factory = sqlite3.Row
-elif APP.config.DB_MODE == 'MYSQL':
-    import pymysql
-    dbusr, dbpwd = APP.config.DB.split('@')[0].split(':')
-    db_name = APP.config.DB.split('@')[1].split('/')[1]
-    host, port = APP.config.DB.split('@')[1].split('/')[0].split(':')
-    DB = pymysql.connect(
-        host=host,
-        port=int(port),
-        user=dbusr,
-        password=dbpwd,
-        db=db_name,
-        cursorclass=pymysql.cursors.DictCursor
-    ).cursor()
-else:
-    print(f'{APP.config.DB_MODE} NOT SUPPORTED')
+DB = dbfactory.get_interface(APP.config.DB_MODE, APP.config.DB)
+
+if not DB:
     sys.exit(1)
 
 TAGS = []
@@ -47,19 +31,18 @@ RESULTS = []
 
 
 def __init_tags__():
-    rows = DB.execute("SELECT ID, name FROM dockerTags")
+    rows = DB.fetchall("SELECT ID, name FROM dockerTags")
     res = {}
-    print(rows)
     for row in rows:
-        res[row['id']] = row['name']
+        res[row['ID']] = row['name']
     return res
 
 
 def __init_results__():
-    rows = DB.execute("SELECT ID, tag FROM resultTags")
+    rows = DB.fetchall("SELECT ID, tag FROM resultTags")
     res = {}
     for row in rows:
-        res[row['id']] = row['tag']
+        res[row['ID']] = row['tag']
     return res
 
 
@@ -71,11 +54,8 @@ def get_test(test_id):
     -----------
      -  test_id : db test id
     """
-    rows = DB.execute(f"SELECT * FROM tests where id='{test_id}'")
-    res = None
-    for row in rows:
-        res = dict(row)
-    return res
+    rows = DB.fetchall(f"SELECT * FROM tests where id='{test_id}'")
+    return rows
 
 
 def get_job(job_id):
@@ -86,12 +66,9 @@ def get_job(job_id):
     ----------
      - job_id: db job id
     """
-    rows = DB.execute(f"SELECT * FROM jobs WHERE id = '{job_id}'")
-    res = None
-    for row in rows:
-        res = dict(row)
-        res['dockerTag'] = convert_tag(res['dockerTag'])
-        res['result'] = convert_result(res['result'])
+    res = DB.fetchone(f"SELECT * FROM jobs WHERE id = '{job_id}'")
+    res['dockerTag'] = convert_tag(res['dockerTag'])
+    res['result'] = convert_result(res['result'])
     return res
 
 
@@ -118,13 +95,13 @@ def convert_result(res_id):
 
 
 def __get_last_id__(table):
-    rows = DB.execute(f"SELECT max(id) FROM {table}")
-    return rows.fetchone()[0]
+    res = DB.fetchone(f"SELECT max(id) FROM {table}")
+    return res[0]
 
 
 def __get_first_id__(table):
-    rows = DB.execute(f"SELECT min(id) FROM {table}")
-    return rows.fetchone()[0]
+    res = DB.fetchone(f"SELECT min(id) FROM {table}")
+    return res[0]
 
 
 def get_id(req, table):
@@ -163,11 +140,9 @@ def get_test_id(test):
             return __get_last_id__('tests')
         if test.lower() == 'first':
             return __get_first_id__('tests')
-        rows = DB.execute(f"SELECT id FROM tests where name='{test}'")
-        res = None
-        for row in rows:
-            res = row['id']
-        return res
+        row = DB.fetchone(f"SELECT ID FROM tests where name='{test}'")
+        if row:
+            return row['ID']
     return None
 
 
@@ -177,15 +152,15 @@ def get_job_stats(job_id):
     if job is None:
         return text("Job do not exist", status=404)
 
-    rows = DB.execute(f"""
+    rows = DB.fetchall(f"""
         SELECT
-            id, test, job, result, start, duration, cpu_time, cpu_usage_avg,
+            ID, test, job, result, start, duration, cpu_time, cpu_usage_avg,
             cpu_usage_max, memory_avg, memory_max, io_write, io_read,
             threads_avg
-        FROM results WHERE job = '{job_id}' ORDER BY id""")
+        FROM results WHERE job = '{job_id}' ORDER BY ID""")
     res = []
     for row in rows:
-        val = dict(row)
+        val = row
         val['result'] = convert_result(val['result'])
         val['test'] = get_test(val['test'])
         val['job'] = job
@@ -204,7 +179,7 @@ def get_test_list(branch=None):
             SELECT ID FROM dockerTags WHERE name = 'snap:{branch}'
         ))"""
     query += " ORDER BY ID"
-    rows = DB.execute(query)
+    rows = DB.fetchall(query)
     return [row['test'] for row in rows]
 
 
@@ -218,11 +193,7 @@ def get_tests(branch=None):
             SELECT ID FROM dockerTags WHERE name = 'snap:{branch}'
         ))"""
     query += ") ORDER BY ID"
-    rows = DB.execute(query)
-    res = []
-    for row in rows:
-        res.append(dict(row))
-    return res
+    return DB.fetchall(query)
 
 
 # INITILIZE TAGS AND RESULTS TABLES

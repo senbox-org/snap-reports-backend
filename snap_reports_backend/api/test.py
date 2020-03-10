@@ -103,24 +103,20 @@ async def get_history_moving_avg(request, test, field, tag, num):
 @test.route("/author/<name:string>")
 async def get_test_by_author(_, name):
     """Retrieve list of tests by author."""
-    rows = DB.execute(f"SELECT * FROM tests where author='{name}' ORDER BY id")
-    res = []
-    for row in rows:
-        res.append(dict(row))
+    res = DB.fetchall(f"SELECT * FROM tests where author='{name}' ORDER BY id")
     return json({'tests': res})
 
 
 @test.route("/tag/<name:string>")
 async def get_test_by_frequency(_, name):
     """Retrieve list of tests by frequency tag."""
-    rows = DB.execute(f"SELECT * FROM tests ORDER BY id")
+    rows = DB.fetchall(f"SELECT * FROM tests ORDER BY id")
     res = []
     lowcase = name.lower()
-    for row in rows:
-        val = dict(row)
+    for val in rows:
         tag = val['frequency'].lower()
         if lowcase in tag:
-            res.append(dict(row))
+            res.append(val)
     return json({'tests': res})
 
 
@@ -130,13 +126,12 @@ async def get_test_exec_count(_, tag):
     test_id = support.get_test_id(tag)
     if test_id is None:
         return text(f"Test `{tag}` not found", status=404)
-    rows = DB.execute(f'''
+    row = DB.fetchone(f'''
         SELECT COUNT(ID)
         FROM jobs
         WHERE ID IN
             (SELECT job FROM results WHERE test = '{test_id}');
         ''')
-    row = rows.fetchone()
     return json({'count': row[0]})
 
 
@@ -146,7 +141,7 @@ async def get_test_last_job(_, tag):
     test_id = support.get_test_id(tag)
     if test_id is None:
         return text(f"Test `{tag}` not found", status=404)
-    rows = DB.execute(f'''
+    row = DB.fetchone(f'''
         SELECT jobs.*, resultTags.tag, dockerTags.name
         FROM jobs 
         INNER JOIN resultTags ON jobs.result = resultTags.ID
@@ -155,5 +150,4 @@ async def get_test_last_job(_, tag):
             (SELECT job FROM results WHERE test = '{test_id}')
         ORDER BY jobs.ID DESC LIMIT 1;
         ''')
-    row = rows.fetchone()
-    return json(dict(row))
+    return json(row)

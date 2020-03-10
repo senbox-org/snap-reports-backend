@@ -101,7 +101,7 @@ async def get_branch_details(_, tag):
 @branch.route("/<tag:string>/last_job")
 async def get_branch_last_job(_, tag):
     """Get last job of a given branch."""
-    rows = DB.execute(f'''
+    row = DB.fetchone(f'''
         SELECT jobs.ID, jobs.jobnum, jobs.timestamp_start, jobs.testScope, 
             resultTags.tag
         FROM jobs
@@ -109,24 +109,20 @@ async def get_branch_last_job(_, tag):
         WHERE jobs.dockerTag =
             (SELECT ID FROM dockerTags WHERE name='snap:{tag}')
         ORDER BY jobs.ID DESC LIMIT 1;''')
-    res = rows.fetchone()
-    return json(dict(res))
+    return json(row)
 
 
 @branch.route("/list")
 async def get_list(_):
     """Get list of branches."""
-    rows = DB.execute('SELECT ID, name FROM dockerTags;')
-    res = []
-    for row in rows:
-        res.append(dict(row))
-    return json({'branches': res})
+    rows = DB.fetchall('SELECT ID, name FROM dockerTags;')
+    return json({'branches': rows})
 
 
 @branch.route("/<tag:string>/njobs")
 async def get_branch_njobs(_, tag):
     """Get number of jobs executed of a given branch."""
-    rows = DB.execute(f'''
+    row = DB.fetchone(f'''
         SELECT COUNT(ID) 
         FROM jobs
         WHERE dockerTag = (
@@ -134,5 +130,4 @@ async def get_branch_njobs(_, tag):
             FROM dockerTags
             WHERE name='snap:{tag}'
         );''')
-    row = rows.fetchone()
     return json({'njobs': row[0]})
