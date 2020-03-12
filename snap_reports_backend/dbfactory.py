@@ -3,6 +3,7 @@ Simple interface for MySQL and SQLite DB.
 """
 import sqlite3
 import pymysql
+import time
 
 
 class SQLiteInterface:
@@ -56,24 +57,25 @@ class MySQLInterfce:
         self.__open__()
 
     def __open__(self):
-        try:
-            connection = pymysql.connect(
-                host=self.host,
-                port=int(self.port),
-                user=self.dbusr,
-                password=self.dbpwd,
-                db=self.db_name,
-                cursorclass=pymysql.cursors.DictCursor
-            )
-            if connection.open:
-                self.connection = connection
-                print("MySQL Connected!")
-                return True
-        except pymysql.err.OperationalError as err:
-            print(err)
-        print('Not connected')
-        self.connection = None
-        return False
+        print('Connecting to DB', end='')
+        while True:
+            print('.', end='')
+            try:
+                connection = pymysql.connect(
+                    host=self.host,
+                    port=int(self.port),
+                    user=self.dbusr,
+                    password=self.dbpwd,
+                    db=self.db_name,
+                    cursorclass=pymysql.cursors.DictCursor
+                )
+                if connection.open:
+                    self.connection = connection
+                    print("[DONE]")
+                    return True
+                time.sleep(5)
+            except pymysql.err.OperationalError:
+                time.sleep(5)
 
     def is_connected(self):
         """Check MySQL connection."""
@@ -81,8 +83,6 @@ class MySQLInterfce:
 
     def execute(self, query, *args):
         """Execute query."""
-        if not self.is_connected():
-            self.__open__()
         if self.is_connected():
             with self.connection.cursor() as cursor:
                 cursor.execute(query, *args)
@@ -90,8 +90,6 @@ class MySQLInterfce:
 
     def fetchall(self, query, *args):
         """Fetch all rows of a query."""
-        if not self.is_connected():
-            self.__open__()
         if self.is_connected():
             rows = []
             with self.connection.cursor() as cursor:
@@ -103,8 +101,6 @@ class MySQLInterfce:
 
     def fetchone(self, query, *args):
         """Fetch one row of a query."""
-        if not self.is_connected():
-            self.__open__()
         if self.is_connected():
             row = None
             with self.connection.cursor() as cursor:
