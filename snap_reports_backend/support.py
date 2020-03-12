@@ -80,6 +80,9 @@ def convert_tag(tag_id):
     -----------
      - tag_id: tag name
     """
+    global TAGS
+    if not TAGS:
+        TAGS = __init_tags__()
     return {
         "id": tag_id,
         "name": TAGS[tag_id]
@@ -88,6 +91,9 @@ def convert_tag(tag_id):
 
 def convert_result(res_id):
     """Convert result:id to result object."""
+    global RESULTS
+    if not RESULTS:
+        RESULTS = __init_results__()
     return {
         "id": res_id,
         "tag": RESULTS[res_id]
