@@ -57,9 +57,9 @@ class MySQLInterfce:
         self.__open__()
 
     def __open__(self):
-        print('Connecting to DB', end='')
+        print('Connecting to DB', end='', flush=True)
         while True:
-            print('.', end='')
+            print('.', end='', flush=True)
             try:
                 connection = pymysql.connect(
                     host=self.host,
