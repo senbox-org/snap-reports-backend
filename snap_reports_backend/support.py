@@ -26,25 +26,28 @@ DB = dbfactory.get_interface(APP.config.DB_MODE, APP.config.DB)
 if not DB:
     sys.exit(1)
 
-TAGS = []
-RESULTS = []
+TAGS = None
+RESULTS = None
 
 
 def __init_tags__():
     rows = DB.fetchall("SELECT ID, name FROM dockerTags")
-    res = {}
-    for row in rows:
-        res[row['ID']] = row['name']
-    return res
+    if rows:
+        res = {}
+        for row in rows:
+            res[row['ID']] = row['name']
+        return res
+    return None
 
 
 def __init_results__():
     rows = DB.fetchall("SELECT ID, tag FROM resultTags")
-    res = {}
-    for row in rows:
-        res[row['ID']] = row['tag']
-    return res
-
+    if rows:
+        res = {}
+        for row in rows:
+            res[row['ID']] = row['tag']
+        return res
+    return None
 
 def get_test(test_id):
     """
