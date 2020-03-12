@@ -49,45 +49,69 @@ class SQLiteInterface:
 class MySQLInterfce:
     """MySQL interface."""
     def __init__(self, dbname):
-        dbusr, dbpwd = dbname.split('@')[0].split(':')
-        db_name = dbname.split('@')[1].split('/')[1]
-        host, port = dbname.split('@')[1].split('/')[0].split(':')
-        self.connection = pymysql.connect(
-            host=host,
-            port=int(port),
-            user=dbusr,
-            password=dbpwd,
-            db=db_name,
-            cursorclass=pymysql.cursors.DictCursor
-        )
+        self.dbusr, self.dbpwd = dbname.split('@')[0].split(':')
+        self.db_name = dbname.split('@')[1].split('/')[1]
+        self.host, self.port = dbname.split('@')[1].split('/')[0].split(':')
+        self.connection = None
+        self.__open__()
+
+    def __open__(self):
+        try:
+            self.connection = pymysql.connect(
+                host=self.host,
+                port=int(self.port),
+                user=self.dbusr,
+                password=self.dbpwd,
+                db=self.db_name,
+                cursorclass=pymysql.cursors.DictCursor
+            )
+            return True
+        except pymysql.err.OperationalError as err:
+            print(err)
+            self.connection = None
+            return False
+
+    def is_connected(self):
+        """Check MySQL connection."""
+        return self.connection and self.connection.open
 
     def execute(self, query, *args):
         """Execute query."""
-        with self.connection.cursor() as cursor:
-            cursor.execute(query, *args)
-        self.connection.commit()
+        if not self.is_connected():
+            self.__open__()
+        if self.is_connected():
+            with self.connection.cursor() as cursor:
+                cursor.execute(query, *args)
+            self.connection.commit()
 
     def fetchall(self, query, *args):
         """Fetch all rows of a query."""
-        with self.connection.cursor() as cursor:
-            cursor.execute(query, *args)
-            rows = cursor.fetchall()
-        self.connection.commit()
-        return rows
+        if not self.is_connected():
+            self.__open__()
+        if self.is_connected():
+            with self.connection.cursor() as cursor:
+                cursor.execute(query, *args)
+                rows = cursor.fetchall()
+            self.connection.commit()
+            return rows
+        return []
 
     def fetchone(self, query, *args):
         """Fetch one row of a query."""
-        with self.connection.cursor() as cursor:
-            cursor.execute(query, *args)
-            row = cursor.fetchone()
-        self.connection.commit()
-        return row
+        if not self.is_connected():
+            self.__open__()
+        if self.is_connected():
+            with self.connection.cursor() as cursor:
+                cursor.execute(query, *args)
+                row = cursor.fetchone()
+            self.connection.commit()
+            return row
+        return None
 
     def close(self):
         """Close connection."""
-        if self.connection:
+        if self.is_connected():
             self.connection.close()
-            self.connection = None
 
     def __del__(self):
         self.close()
