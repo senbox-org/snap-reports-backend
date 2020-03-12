@@ -57,7 +57,7 @@ class MySQLInterfce:
 
     def __open__(self):
         try:
-            self.connection = pymysql.connect(
+            connection = pymysql.connect(
                 host=self.host,
                 port=int(self.port),
                 user=self.dbusr,
@@ -65,11 +65,15 @@ class MySQLInterfce:
                 db=self.db_name,
                 cursorclass=pymysql.cursors.DictCursor
             )
-            return True
+            if connection.open:
+                self.connection = connection
+                print("MySQL Connected!")
+                return True
         except pymysql.err.OperationalError as err:
             print(err)
-            self.connection = None
-            return False
+        print('Not connected')
+        self.connection = None
+        return False
 
     def is_connected(self):
         """Check MySQL connection."""
@@ -89,6 +93,7 @@ class MySQLInterfce:
         if not self.is_connected():
             self.__open__()
         if self.is_connected():
+            rows = []
             with self.connection.cursor() as cursor:
                 cursor.execute(query, *args)
                 rows = cursor.fetchall()
@@ -101,6 +106,7 @@ class MySQLInterfce:
         if not self.is_connected():
             self.__open__()
         if self.is_connected():
+            row = None
             with self.connection.cursor() as cursor:
                 cursor.execute(query, *args)
                 row = cursor.fetchone()
