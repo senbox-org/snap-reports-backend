@@ -1,3 +1,4 @@
 sanic
 sanic-cors
+cryptography
 pymysql
