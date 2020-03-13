@@ -1,5 +1,5 @@
-FROM python:3.6-alpine
-RUN apk add --no-cache gfortran build-base libffi-dev openssl-dev 
+FROM python:3.8
+RUN apt install build-base libffi-dev libssl-dev 
 COPY . .
 RUN pip install -r requirements.txt
 EXPOSE 9090
