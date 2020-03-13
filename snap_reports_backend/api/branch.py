@@ -116,6 +116,7 @@ async def get_branch_last_job(_, tag):
 async def get_list(_):
     """Get list of branches."""
     rows = DB.fetchall('SELECT ID, name FROM dockerTags;')
+    print(rows)
     return json({'branches': rows})
 
 
