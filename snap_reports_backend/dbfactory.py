@@ -49,10 +49,25 @@ class SQLiteInterface:
 
 def r2d(row):
     """Convert row to dictionary."""
-    val = {}
+    res = {}
     for key in row:
-        val[str(key)] = row[key]
-    return val
+        res[str(key)] = v2v(row[key])
+    return res
+
+def a2v(xs):
+    """Convert array to value."""
+    return [v2v(x) for x in xs]
+
+def v2v(x):
+    """Convert value to value."""
+    tx = type(x)
+    if tx == list:
+        return a2v(x)
+    if tx == dict:
+        return d2v(x)
+    if tx in (str, int, float):
+        return x
+    return str(x)
 
 
 class MySQLInterfce:
