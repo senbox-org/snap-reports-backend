@@ -47,6 +47,14 @@ class SQLiteInterface:
         self.close()
 
 
+def r2d(row):
+    """Convert row to dictionary."""
+    val = {}
+    for key in row:
+        val[str(key)] = row[key]
+    return row 
+
+
 class MySQLInterfce:
     """MySQL interface."""
     def __init__(self, dbname):
@@ -96,7 +104,7 @@ class MySQLInterfce:
                 cursor.execute(query, *args)
                 rows = cursor.fetchall()
             self.connection.commit()
-            return rows
+            return [r2d(row) for row in rows]
         return []
 
     def fetchone(self, query, *args):
@@ -107,7 +115,7 @@ class MySQLInterfce:
                 cursor.execute(query, *args)
                 row = cursor.fetchone()
             self.connection.commit()
-            return row
+            return r2d(row)
         return None
 
     def close(self):
