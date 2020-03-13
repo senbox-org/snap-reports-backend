@@ -51,8 +51,8 @@ def r2d(row):
     """Convert row to dictionary."""
     val = {}
     for key in row:
-        val[str(key)] = row[key]
-    return row 
+        val[str(key)] = str(row[key])
+    return val
 
 
 class MySQLInterfce:
