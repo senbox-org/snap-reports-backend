@@ -22,4 +22,5 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=APP.config.PORT,
         workers=4,
-        access_log=False)
+        access_log=False,
+        debug=True)
