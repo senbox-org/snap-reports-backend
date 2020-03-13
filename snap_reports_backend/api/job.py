@@ -36,7 +36,12 @@ async def job_list(request):
     # for value in rows:
         # value['dockerTag'] = support.convert_tag(value['dockerTag'])
         # value['result'] = support.convert_result(value['result'])
-    print(type(rows))
+    print(type(rows))   
+    if rows:
+        print(type(rows[0]))
+        for key in rows[0]:
+            print(key, type(key))
+            print(type(rows[0][key]), rows[0][key])
     return json(rows)
 
 
