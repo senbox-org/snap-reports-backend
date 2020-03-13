@@ -1,4 +1,4 @@
-FROM python:3.7-alpine
+FROM python:3.6-alpine
 RUN apk add --no-cache gfortran build-base libffi-dev openssl-dev 
 COPY . .
 RUN pip install -r requirements.txt
