@@ -33,13 +33,10 @@ async def job_list(request):
     if query_str:
         query_str = "WHERE " + query_str
     rows = DB.fetchall("SELECT * FROM jobs "+query_str + " ORDER BY id DESC")
-    res = []
-    for row in rows:
-        value = row
-        value['dockerTag'] = support.convert_tag(value['dockerTag'])
-        value['result'] = support.convert_result(value['result'])
-        res.append(value)
-    return json({"jobs": res})
+    # for value in rows:
+        # value['dockerTag'] = support.convert_tag(value['dockerTag'])
+        # value['result'] = support.convert_result(value['result'])
+    return json({"jobs": rows})
 
 
 @job.route("/tag/<tag:string>")
