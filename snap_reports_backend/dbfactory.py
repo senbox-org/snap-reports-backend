@@ -96,7 +96,7 @@ class MySQLInterfce:
                 cursor.execute(query, *args)
                 rows = cursor.fetchall()
             self.connection.commit()
-            return [dict(row) for row in rows]
+            return rows
         return []
 
     def fetchone(self, query, *args):
@@ -107,7 +107,7 @@ class MySQLInterfce:
                 cursor.execute(query, *args)
                 row = cursor.fetchone()
             self.connection.commit()
-            return dict(row)
+            return row
         return None
 
     def close(self):
