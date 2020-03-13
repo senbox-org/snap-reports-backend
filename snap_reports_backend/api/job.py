@@ -36,7 +36,8 @@ async def job_list(request):
     # for value in rows:
         # value['dockerTag'] = support.convert_tag(value['dockerTag'])
         # value['result'] = support.convert_result(value['result'])
-    return json({"jobs": rows})
+    print(type(rows))
+    return json(rows)
 
 
 @job.route("/tag/<tag:string>")
