@@ -50,6 +50,8 @@ class SQLiteInterface:
 
 def r2d(row, desc):
     """Convert row to dictionary."""
+    if row is None:
+        return None
     res = {}
     for i, col in enumerate(desc):
         key = str(col[0])
@@ -80,7 +82,7 @@ class MySQLInterfce:
         self.host, self.port = dbname.split('@')[1].split('/')[0].split(':')
         self.port = int(self.port)
 
-    async def __open__(self):
+    async def open(self):
         loop = asyncio.get_event_loop()
         conn = await aiomysql.connect(host=self.host, port=self.port,
                                     user=self.user, password=self.password,
@@ -89,18 +91,16 @@ class MySQLInterfce:
 
     async def execute(self, query, *args):
         """Execute query."""
-        conn = await self.__open__()
+        conn = await self.open()
         async with conn.cursor() as cursor:
             await cursor.execute(query, *args)
         conn.close()
 
     async def fetchall(self, query, *args):
         """Fetch all rows of a query."""
-        conn = await self.__open__()
+        conn = await self.open()
         res = []   
         async with conn.cursor() as cursor:
-            print ("------------ FETCH ALL ------------")
-            print(query)
             await cursor.execute(query, *args)
             desc = cursor.description
             rows = await cursor.fetchall()
@@ -111,7 +111,7 @@ class MySQLInterfce:
 
     async def fetchone(self, query, *args):
         """Fetch one row of a query."""
-        conn = await self.__open__()
+        conn = await self.open()
         obj = None
         async with conn.cursor() as cursor:            
             await cursor.execute(query, *args)
@@ -126,7 +126,8 @@ def get_interface(mode, name):
     """Return correct DB interface given the current configuration."""
     mode = mode.upper()
     if mode == 'SQLITE':
-        return  SQLiteInterface(name)
+        print('Deprcated')
+        return None
     if mode == 'MYSQL':
         return MySQLInterfce(name)
     print(f'Mode `{mode}` not supported')

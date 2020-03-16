@@ -33,9 +33,10 @@ async def job_list(request):
     if query_str:
         query_str = "WHERE " + query_str
     rows = await DB.fetchall("SELECT * FROM jobs "+query_str + " ORDER BY id DESC")
-    # for value in rows:
-        # value['dockerTag'] = support.convert_tag(value['dockerTag'])
-        # value['result'] = support.convert_result(value['result'])
+
+    for value in rows:
+        value['dockerTag'] = await support.convert_tag(value['dockerTag'])
+        value['result'] = await support.convert_result(value['result'])
     return json(rows)
 
 
@@ -144,9 +145,6 @@ async def get_job_summary(_, job_id):
             test, result, duration, cpu_time, memory_avg, memory_max, io_read,
             io_write
         FROM results WHERE job = '{job_id}' ORDER BY test""")
-    print('---------------------------')
-    print(rows)
-    print('---------------------------')
 
     summary = {
         'num_tests': 0,

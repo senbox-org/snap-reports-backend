@@ -123,7 +123,7 @@ async def __get_test_name__(test_id):
     """)
     if not row:
         return None
-    return row[0]
+    return row['name']
 
 
 async def __get_reference__(test_id, field):
@@ -134,7 +134,7 @@ async def __get_reference__(test_id, field):
         """)
     if not row:
         return None
-    return row[0]
+    return row[field]
 
 
 async def get_test_reference(test_id):

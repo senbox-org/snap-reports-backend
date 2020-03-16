@@ -132,7 +132,7 @@ async def get_test_exec_count(_, tag):
         WHERE ID IN
             (SELECT job FROM results WHERE test = '{test_id}');
         ''')
-    return json({'count': row[0]})
+    return json({'count': row['COUNT(ID)']})
 
 
 @test.route('/<tag>/last_job')

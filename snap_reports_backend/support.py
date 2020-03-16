@@ -30,8 +30,8 @@ DB = dbfactory.get_interface(APP.config.DB_MODE, APP.config.DB)
 if not DB:
     sys.exit(1)
 
-TAGS = None
-RESULTS = None
+TAGS = {}
+RESULTS = {}
 
 
 async def __tag__(id):
@@ -76,11 +76,21 @@ async def convert_tag(tag_id):
     -----------
      - tag_id: tag name
     """
-    return await __tag__(tag_id)
+    global TAGS
+    if tag_id in TAGS:
+        return TAGS[tag_id]
+    value = await __tag__(tag_id)
+    TAGS[tag_id] = value
+    return value
 
 async def convert_result(res_id):
     """Convert result:id to result object."""
-    return await __result__(res_id)
+    global RESULTS
+    if res_id in RESULTS:
+        return RESULTS[res_id]
+    value = await __result__(res_id)
+    RESULTS[res_id] = value
+    return value
 
 async def __get_last_id__(table):
     res = await DB.fetchone(f"SELECT max(id) FROM {table}")
@@ -161,12 +171,12 @@ async def get_job_stats(job_id):
 
 async def get_test_list(branch=None):
     """Get test list."""
-    query = "SELECT DISTINCT test FROM results WHERE"
+    query = "SELECT test FROM results WHERE"
     if branch:
         query += f""" job IN (SELECT ID FROM jobs WHERE dockerTag = (
             SELECT ID FROM dockerTags WHERE name = 'snap:{branch}'
         ))"""
-    query += " ORDER BY ID"
+    query += " GROUP BY test"
     rows = await DB.fetchall(query)
     return [row['test'] for row in rows]
 
@@ -181,5 +191,5 @@ async def get_tests(branch=None):
             SELECT ID FROM dockerTags WHERE name = 'snap:{branch}'
         ))"""
     query += ") ORDER BY ID"
-    return DB.fetchall(query)
+    return await DB.fetchall(query)
 

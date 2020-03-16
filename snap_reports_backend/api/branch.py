@@ -40,7 +40,7 @@ def __init_result__():
 async def get_branch_summary(_, tag):
     """Get branch statistics summary."""
     tests = await support.get_test_list(branch=tag)
-    res = await __init_result__()
+    res = __init_result__()
     for test in tests:
         stat = await performances.get_status_dict(test, tag)
         if stat:
@@ -130,4 +130,4 @@ async def get_branch_njobs(_, tag):
             FROM dockerTags
             WHERE name='snap:{tag}'
         );''')
-    return json({'njobs': row[0]})
+    return json({'njobs': row['COUNT(ID)']})
