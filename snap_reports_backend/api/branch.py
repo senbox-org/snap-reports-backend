@@ -5,6 +5,8 @@ from sanic.response import json
 import support
 import performances
 from support import DB
+import dbfactory
+
 
 branch = Blueprint('api_branch', url_prefix='/branch')
 
@@ -35,37 +37,100 @@ def __init_result__():
         }
     }
 
+async def __stats_N__(cursor, tag, field, last=None):
+    query = f"""
+    SELECT AVG({field})
+    From results 
+    Join (
+        SELECT ID from jobs where 
+        dockerTag = 
+            (SELECT ID from dockerTags WHERE name='snap:{tag}')
+        ORDER BY ID DESC {'LIMIT '+str(last) if last else ''}
+    ) jobs ON job IN (jobs.ID)
+    WHERE 
+        test in (select test from reference_values);
+    """
+
+    res = await dbfactory.fetchone(cursor, query)
+    avg = res[f'AVG({field})']
+
+    query = f"""
+    SELECT AVG(reference_values.{field})
+    From reference_values
+    inner Join results on reference_values.test = results.test
+    Join (
+        SELECT ID from jobs where 
+        dockerTag = 
+            (SELECT ID from dockerTags WHERE name='snap:{tag}')
+        ORDER BY ID DESC {'LIMIT '+str(last) if last else ''}
+    ) jobs on results.job In (jobs.ID);
+    """
+    res = await dbfactory.fetchone(cursor, query)
+    ref = res[f'AVG(reference_values.{field})']
+    return float(avg) / float(ref) * 100
+
+async def __stats__(cursor, tag, field):
+    return {
+        'last': await __stats_N__(cursor, tag, field, 1),
+        'last10': await __stats_N__(cursor, tag, field, 10),
+        'average': await __stats_N__(cursor, tag, field, None)
+    }
+
+async def __improved__(cursor, tag, *fields):
+    query = f'''
+    SELECT COUNT(results.ID) 
+    From results 
+    Join (
+        SELECT ID from jobs where 
+        dockerTag = 
+            (SELECT ID from dockerTags WHERE name='snap:{tag}')
+        ORDER BY ID DESC LIMIT 10
+    ) jobs on results.job In (jobs.ID);
+    '''
+    row = await dbfactory.fetchone(cursor, query)
+    count = row['COUNT(results.ID)']
+    query = f'''
+    SELECT COUNT(results.ID) 
+    From results 
+    Join (
+        SELECT ID from jobs where 
+        dockerTag = 
+            (SELECT ID from dockerTags WHERE name='snap:{tag}')
+        ORDER BY ID DESC LIMIT 10
+    ) jobs on results.job In (jobs.ID)
+    INNER JOIN reference_values ON results.test = reference_values.test
+    WHERE 
+    '''
+    query += ' AND '.join([f'results.{field} < reference_values.{field}' for field in fields])
+    row = await dbfactory.fetchone(cursor, query)
+    improved = row['COUNT(results.ID)']
+    return int(improved) / int(count) * 100
+
 
 @branch.route("/<tag:string>/summary")
 async def get_branch_summary(_, tag):
     """Get branch statistics summary."""
-    tests = await support.get_test_list(branch=tag)
-    res = __init_result__()
-    for test in tests:
-        stat = await performances.get_status_dict(test, tag)
-        if stat:
-            res['count'] += 1
-            improved = {'cpu': True, 'memory': True}
-            for key in stat:
-                if isinstance(stat[key], dict):
-                    for sub_key in stat[key]:
-                        if sub_key == 'last10' and stat[key][sub_key] < 0:
-                            improved[key] = False
-                        if sub_key in res[key]:
-                            res[key][sub_key] += stat[key][sub_key]
-            for key in improved:
-                if improved[key]:
-                    res['improved'][key] += 1
-            if all(improved.values()):
-                res['improved']['both'] += 1
-    if res['count']:
-        for key in res['cpu']:
-            res['cpu'][key] /= res['count']
-        for key in res['memory']:
-            res['memory'][key] /= res['count']
-        for key in res['read']:
-            res['read'][key] /= res['count']
-    return json(res)
+    conn = await DB.open()
+    async with conn.cursor() as cursor:
+        res = __init_result__()
+        row = await dbfactory.fetchone(cursor, f"""
+            SELECT COUNT(ID)
+            From results 
+            WHERE job in 
+                (SELECT ID 
+                 FROM jobs 
+                 WHERE dockerTag = 
+                    (SELECT ID from dockerTags WHERE name='snap:{tag}')
+                ) 
+            AND test in (select test from reference_values);""")
+        res['count'] = row['COUNT(ID)']
+
+        for key, field in [('cpu', 'cpu_time'), ('memory', 'memory_avg'), ('read', 'io_read')]:
+            res[key] = await __stats__(cursor, tag, field)
+            res['improved'][key] = await __improved__(cursor, tag, field)
+        res['improved']['both'] = await __improved__(cursor, tag, 'cpu_time', 'memory_avg', 'io_read')
+
+        return json(res)
 
 
 @branch.route("/<tag:string>/summary/absolute")

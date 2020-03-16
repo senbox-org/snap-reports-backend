@@ -169,7 +169,7 @@ async def get_job_stats(job_id):
     return json({'statistics': res})
 
 
-async def get_test_list(branch=None):
+async def get_test_list(cursor=None, branch=None):
     """Get test list."""
     query = "SELECT test FROM results WHERE"
     if branch:
@@ -177,7 +177,10 @@ async def get_test_list(branch=None):
             SELECT ID FROM dockerTags WHERE name = 'snap:{branch}'
         ))"""
     query += " GROUP BY test"
-    rows = await DB.fetchall(query)
+    if cursor:
+        rows = await dbfactory.fetchall(cursor, query)
+    else:
+        rows = await DB.fetchall(query)
     return [row['test'] for row in rows]
 
 

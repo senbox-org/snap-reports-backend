@@ -11,6 +11,7 @@ from sanic.response import text, json
 from datetime import datetime
 
 from support import DB
+import dbfactory
 
 CWD = os.path.abspath(os.getcwd())
 
@@ -126,12 +127,16 @@ async def __get_test_name__(test_id):
     return row['name']
 
 
-async def __get_reference__(test_id, field):
-    row = await DB.fetchone(f"""
+async def __get_reference__(test_id, field, cursor=None):
+    query = f"""
             SELECT {field}
             FROM reference_values
             WHERE test={test_id}
-        """)
+        """
+    if cursor:
+        row = await dbfactory.fetchone(cursor, query)
+    else:
+        row = await DB.fetchone()
     if not row:
         return None
     return row[field]
@@ -159,7 +164,7 @@ async def test_reference(test_id):
     return json(res)
 
 
-async def __history__(test_id, tag, field, last_n):
+async def __history__(test_id, tag, field, last_n, cursor=None):
     if tag.lower() != 'any':
         query = f"""
             SELECT start, {field}
@@ -178,7 +183,10 @@ async def __history__(test_id, tag, field, last_n):
             """
     if last_n is not None:
         query += f" LIMIT {last_n}"
-    rows = await DB.fetchall(query)
+    if cursor:
+        rows = await dbfactory.fetchall(cursor, query)
+    else:
+        rows = await DB.fetchall(query)
     value = []
     date = []
     for row in rows:
@@ -203,13 +211,13 @@ async def __history_moving_avg__(test_id, tag, field, last_n, window):
     return sub_x, sub_y
 
 
-async def history(test_id, tag, field, last_n=None):
+async def history(test_id, tag, field, last_n=None, cursor=None):
     """Retrive the historic values of a specific field of a given test."""
     field = field.lower()
     if field not in FIELDS:
         return text("Field not valid", status=500)
 
-    date, value = await __history__(test_id, tag, field, last_n)
+    date, value = await __history__(test_id, tag, field, last_n, cursor=cursor)
     return json({
         'date': date,
         'value': value
@@ -229,18 +237,18 @@ async def history_ma(test_id, tag, field, num, last_n=None):
     })
 
 
-async def get_status_fulldata_dict(test_id, tag):
+async def get_status_fulldata_dict(test_id, tag, cursor=None):
     """Get branch test status."""
-    ref_cpu_time = await __get_reference__(test_id, "cpu_time")
+    ref_cpu_time = await __get_reference__(test_id, "cpu_time", cursor=cursor)
     if ref_cpu_time is None:
         return None
-    ref_memory = await __get_reference__(test_id, "memory_avg")
-    ref_read = await __get_reference__(test_id, "io_read")
-    _, cpu_time = await __history__(test_id, tag, "cpu_time", None)
+    ref_memory = await __get_reference__(test_id, "memory_avg", cursor=cursor)
+    ref_read = await __get_reference__(test_id, "io_read", cursor=cursor)
+    _, cpu_time = await __history__(test_id, tag, "cpu_time", last_n=None, cursor=cursor)
     if not len(cpu_time):
         return None
-    _, memory = await __history__(test_id, tag, "memory_avg", None)
-    _, read = await __history__(test_id, tag, 'io_read', None)
+    _, memory = await __history__(test_id, tag, "memory_avg", last_n=None, cursor=cursor)
+    _, read = await __history__(test_id, tag, 'io_read', last_n=None, cursor=cursor)
     res = {}
     res['cpu'] = {
         'last': cpu_time[0],
@@ -264,9 +272,9 @@ async def get_status_fulldata_dict(test_id, tag):
     return res
 
 
-async def get_status_dict(test_id, tag):
+async def get_status_dict(test_id, tag, cursor=None):
     """Get branch test status."""
-    res = await get_status_fulldata_dict(test_id, tag)
+    res = await get_status_fulldata_dict(test_id, tag, cursor=cursor)
     if not res:
         return None
     for key in res:

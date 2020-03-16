@@ -81,20 +81,18 @@ class MySQLInterfce:
         self.db_name = dbname.split('@')[1].split('/')[1]
         self.host, self.port = dbname.split('@')[1].split('/')[0].split(':')
         self.port = int(self.port)
+        self.connection = None
 
     async def open(self):
         loop = asyncio.get_event_loop()
-        conn = await aiomysql.connect(host=self.host, port=self.port,
+        return await aiomysql.connect(host=self.host, port=self.port,
                                     user=self.user, password=self.password,
                                     db=self.db_name, loop=loop)
-        return conn
 
     async def execute(self, query, *args):
         """Execute query."""
-        conn = await self.open()
         async with conn.cursor() as cursor:
             await cursor.execute(query, *args)
-        conn.close()
 
     async def fetchall(self, query, *args):
         """Fetch all rows of a query."""
@@ -106,7 +104,6 @@ class MySQLInterfce:
             rows = await cursor.fetchall()
             for row in rows:
                 res.append(r2d(row, desc))        
-            conn.close()
         return res
 
     async def fetchone(self, query, *args):
@@ -118,8 +115,34 @@ class MySQLInterfce:
             desc = cursor.description
             row = await cursor.fetchone()
             obj = r2d(row, desc)
-        conn.close()
         return obj
+
+    def __del__(self):
+        if self.connection:
+            self.connection.close()
+
+
+async def fetchone(cursor, query, *args):
+    await cursor.execute(query, *args)
+    desc = cursor.description
+    row = await cursor.fetchone()
+    obj = r2d(row, desc)
+    return obj
+
+
+async def fetchall(cursor, query, *args):
+    await cursor.execute(query, *args)
+    desc = cursor.description
+    rows = await cursor.fetchall()
+    res = []
+    for row in rows:
+        res.append(r2d(row, desc))        
+    return res
+
+
+async def execute(cursor, query, *args):
+    await cursor.execute(query, *args)
+
 
 
 def get_interface(mode, name):
