@@ -39,10 +39,10 @@ def __init_result__():
 @branch.route("/<tag:string>/summary")
 async def get_branch_summary(_, tag):
     """Get branch statistics summary."""
-    tests = support.get_test_list(branch=tag)
+    tests = await support.get_test_list(branch=tag)
     res = await __init_result__()
     for test in tests:
-        stat = performances.get_status_dict(test, tag)
+        stat = await performances.get_status_dict(test, tag)
         if stat:
             res['count'] += 1
             improved = {'cpu': True, 'memory': True}
@@ -71,10 +71,10 @@ async def get_branch_summary(_, tag):
 @branch.route("/<tag:string>/summary/absolute")
 async def get_branch_summary_absolute(_, tag):
     """Get branch statistics absolute numbers."""
-    tests = support.get_test_list(branch=tag)
+    tests = await support.get_test_list(branch=tag)
     res = __init_result__()
     for test in tests:
-        stat = performances.get_status_fulldata_dict(test, tag)
+        stat = await performances.get_status_fulldata_dict(test, tag)
         if stat:
             res['count'] += 1
             for key in stat:
@@ -88,10 +88,10 @@ async def get_branch_summary_absolute(_, tag):
 @branch.route("/<tag:string>/details")
 async def get_branch_details(_, tag):
     """Get branch statistics summary."""
-    tests = support.get_tests(branch=tag)
+    tests = await support.get_tests(branch=tag)
     res = []
     for test in tests:
-        stat = performances.get_status_fulldata_dict(test['ID'], tag)
+        stat = await performances.get_status_fulldata_dict(test['ID'], tag)
         if stat:
             stat['test'] = test
             res.append(stat)

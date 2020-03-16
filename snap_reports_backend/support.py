@@ -84,12 +84,12 @@ async def convert_result(res_id):
 
 async def __get_last_id__(table):
     res = await DB.fetchone(f"SELECT max(id) FROM {table}")
-    return res[0]
+    return res['max(id)']
 
 
 async def __get_first_id__(table):
     res = await DB.fetchone(f"SELECT min(id) FROM {table}")
-    return res[0]
+    return res['min(id)']
 
 
 async def get_id(req, table):

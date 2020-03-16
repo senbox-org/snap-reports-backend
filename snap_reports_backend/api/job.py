@@ -36,12 +36,6 @@ async def job_list(request):
     # for value in rows:
         # value['dockerTag'] = support.convert_tag(value['dockerTag'])
         # value['result'] = support.convert_result(value['result'])
-    print(type(rows))   
-    if rows:
-        print(type(rows[0]))
-        for key in rows[0]:
-            print(key, type(key))
-            print(type(rows[0][key]), rows[0][key])
     return json(rows)
 
 
@@ -60,8 +54,8 @@ async def job_list_by_tag(_, tag):
     res = []
     for row in rows:
         value = row
-        value['dockerTag'] = support.convert_tag(value['dockerTag'])
-        value['result'] = support.convert_result(value['result'])
+        value['dockerTag'] = await support.convert_tag(value['dockerTag'])
+        value['result'] = await support.convert_result(value['result'])
         res.append(value)
     return json({"tests": res})
 
@@ -94,10 +88,10 @@ async def get_job_results(_, job_id):
     -----------
      - job_id: job id
     """
-    job_id = support.get_id(job_id, 'jobs')
+    job_id = await support.get_id(job_id, 'jobs')
     if job_id is None:
         return text("Option non valid", status=500)
-    return support.get_job_stats(job_id)
+    return await support.get_job_stats(job_id)
 
 
 @job.route("/<job_id>/statistics/<exec_id:int>")
@@ -109,11 +103,11 @@ async def get_job_exec_stat(_, job_id, exec_id):
     -----------
      - id: job id
     """
-    job_id = support.get_id(job_id, 'jobs')
+    job_id = await support.get_id(job_id, 'jobs')
 
     if job_id is None:
         return text("Job option non valid", status=500)
-    job_obj = support.get_job(job_id)
+    job_obj = await support.get_job(job_id)
     if job_obj is None:
         return text("Job do not exist", status=404)
 
@@ -121,8 +115,8 @@ async def get_job_exec_stat(_, job_id, exec_id):
         SELECT *
         FROM results WHERE job = '{job_id}' AND test = '{exec_id}'""")
     if val:
-        val['result'] = support.convert_result(val['result'])
-        val['test'] = support.get_test(val['test'])
+        val['result'] = await support.convert_result(val['result'])
+        val['test'] = await support.get_test(val['test'])
         val['job'] = job_obj
         val['raw_data'] = __convert_csv__(val['raw_data'])
         return json(val)
@@ -138,10 +132,10 @@ async def get_job_summary(_, job_id):
     -----------
      - id: job id
     """
-    job_id = support.get_id(job_id, 'jobs')
+    job_id = await support.get_id(job_id, 'jobs')
     if job_id is None:
         return text("Option not valid", status=500)
-    job_obj = support.get_job(job_id)
+    job_obj = await support.get_job(job_id)
     if job_obj is None:
         return text("Job do not exist", status=404)
 
@@ -150,6 +144,10 @@ async def get_job_summary(_, job_id):
             test, result, duration, cpu_time, memory_avg, memory_max, io_read,
             io_write
         FROM results WHERE job = '{job_id}' ORDER BY test""")
+    print('---------------------------')
+    print(rows)
+    print('---------------------------')
+
     summary = {
         'num_tests': 0,
         'duration': 0,
@@ -167,10 +165,12 @@ async def get_job_summary(_, job_id):
         'tests': [],
         'skipped': 0
     }
+    if not rows:
+        return summary
 
     for row in rows:
         test_id = row['test']
-        reference = performances.get_test_reference(test_id)
+        reference = await performances.get_test_reference(test_id)
         if reference:
             test = {
                 'duration': row['duration'] / reference['duration'],
@@ -186,7 +186,7 @@ async def get_job_summary(_, job_id):
             }
         else:
             test = {}
-        test['name'] = performances.__get_test_name__(test_id)
+        test['name'] = await performances.__get_test_name__(test_id)
         test['ID'] = row['test']
         summary['tests'].append(test)
         summary['num_tests'] += 1
@@ -210,10 +210,10 @@ async def get_job_summary(_, job_id):
 @job.route("/<job_id>/summary/testsets")
 async def get_testsets_summary(_, job_id):
     """Get testset summary."""
-    job_id = support.get_id(job_id, 'jobs')
+    job_id = await support.get_id(job_id, 'jobs')
     if job_id is None:
         return text("Option not valid", status=500)
-    job_obj = support.get_job(job_id)
+    job_obj = await support.get_job(job_id)
     if job_obj is None:
         return text("Job do not exist", status=404)
 
@@ -226,7 +226,7 @@ async def get_testsets_summary(_, job_id):
     count = 0
     summary = {}
     for row in rows:
-        test = support.get_test(row['test'])
+        test = await support.get_test(row['test'])
         testset = test['testset']
         count += 1
         if testset not in summary:
@@ -234,7 +234,7 @@ async def get_testsets_summary(_, job_id):
         summ = {
             'ID': test['ID'],
             'name': test['name'],
-            'result': support.convert_result(row['result']),
+            'result': await support.convert_result(row['result']),
             'profile': {
                 'duration': row['duration'],
                 'cpu_time': row['cpu_time'],
@@ -243,7 +243,7 @@ async def get_testsets_summary(_, job_id):
                 'io_read': row['io_read'],
                 'io_write': row['io_write'],
             },
-            'reference': performances.get_test_reference(test['ID'])
+            'reference': await performances.get_test_reference(test['ID'])
         }
         if summ['result']['tag'] == 'SUCCESS':
             passed += 1

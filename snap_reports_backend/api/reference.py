@@ -19,6 +19,6 @@ async def get_references(_):
     FROM reference_values;""")
     res = []
     for val in rows:
-        val['test'] = support.get_test(val['test'])
+        val['test'] = await support.get_test(val['test'])
         res.append(val)
     return json({'references': res})
