@@ -93,7 +93,7 @@ def __parse_results__(rows):
     return json(res)
 
 
-def test_summary(test_id, tag=None):
+async def test_summary(test_id, tag=None):
     """Get test summary."""
     if test_id is None:
         return text("Test not found", status=404)
@@ -109,14 +109,14 @@ def test_summary(test_id, tag=None):
         AND job IN
             (SELECT ID FROM jobs WHERE dockerTag =
                 (SELECT ID FROM dockerTags WHERE name='snap:{tag}'));"""
-    rows = DB.fetchall(query)
+    rows = await DB.fetchall(query)
     if not rows:
         return text("No rows found", status=500)
     return __parse_results__(rows)
 
 
-def __get_test_name__(test_id):
-    row = DB.fetchone(f"""
+async def __get_test_name__(test_id):
+    row = await DB.fetchone(f"""
         SELECT name
         FROM tests
         WHERE id = '{test_id}';
@@ -126,8 +126,8 @@ def __get_test_name__(test_id):
     return row[0]
 
 
-def __get_reference__(test_id, field):
-    row = DB.fetchone(f"""
+async def __get_reference__(test_id, field):
+    row = await DB.fetchone(f"""
             SELECT {field}
             FROM reference_values
             WHERE test={test_id}
@@ -137,9 +137,9 @@ def __get_reference__(test_id, field):
     return row[0]
 
 
-def get_test_reference(test_id):
+async def get_test_reference(test_id):
     """Get test references values."""
-    row = DB.fetchone(f"""
+    row = await DB.fetchone(f"""
             SELECT
                 updated, duration, cpu_time, cpu_usage_avg, memory_avg,
                 memory_max, io_write, io_read, threads_avg
@@ -149,17 +149,17 @@ def get_test_reference(test_id):
     return row
 
 
-def test_reference(test_id):
+async def test_reference(test_id):
     """Get test references values."""
     if test_id is None:
         return text("Test not found", status=404)
-    res = get_test_reference(test_id)
+    res = await get_test_reference(test_id)
     if not res:
         return text("No reference found", status=404)
     return json(res)
 
 
-def __history__(test_id, tag, field, last_n):
+async def __history__(test_id, tag, field, last_n):
     if tag.lower() != 'any':
         query = f"""
             SELECT start, {field}
@@ -178,7 +178,7 @@ def __history__(test_id, tag, field, last_n):
             """
     if last_n is not None:
         query += f" LIMIT {last_n}"
-    rows = DB.fetchall(query)
+    rows = await DB.fetchall(query)
     value = []
     date = []
     for row in rows:
@@ -187,13 +187,13 @@ def __history__(test_id, tag, field, last_n):
     return date, value
 
 
-def __history_mean_value__(test_id, tag, field, last_n):
-    _, value = __history__(test_id, tag, field, last_n)
+async def __history_mean_value__(test_id, tag, field, last_n):
+    _, value = await __history__(test_id, tag, field, last_n)
     return statistics.mean(value)
 
 
-def __history_moving_avg__(test_id, tag, field, last_n, window):
-    date, value = __history__(test_id, tag, field, last_n)
+async def __history_moving_avg__(test_id, tag, field, last_n, window):
+    date, value = await __history__(test_id, tag, field, last_n)
     date = [datetime.fromisoformat(x).timestamp() for x in date]
     sub_x = []
     sub_y = []
@@ -203,44 +203,44 @@ def __history_moving_avg__(test_id, tag, field, last_n, window):
     return sub_x, sub_y
 
 
-def history(test_id, tag, field, last_n=None):
+async def history(test_id, tag, field, last_n=None):
     """Retrive the historic values of a specific field of a given test."""
     field = field.lower()
     if field not in FIELDS:
         return text("Field not valid", status=500)
 
-    date, value = __history__(test_id, tag, field, last_n)
+    date, value = await __history__(test_id, tag, field, last_n)
     return json({
         'date': date,
         'value': value
     })
 
 
-def history_ma(test_id, tag, field, num, last_n=None):
+async def history_ma(test_id, tag, field, num, last_n=None):
     """Retrive the historic values of a specific field of a given test."""
     field = field.lower()
     if field not in FIELDS:
         return text("Field not valid", status=500)
 
-    date, value = __history_moving_avg__(test_id, tag, field, last_n, num)
+    date, value = await __history_moving_avg__(test_id, tag, field, last_n, num)
     return json({
         'date':  [datetime.fromtimestamp(x).strftime('%Y-%m-%d %H:%M:%S') for x in date],
         'value': value
     })
 
 
-def get_status_fulldata_dict(test_id, tag):
+async def get_status_fulldata_dict(test_id, tag):
     """Get branch test status."""
-    ref_cpu_time = __get_reference__(test_id, "cpu_time")
+    ref_cpu_time = await __get_reference__(test_id, "cpu_time")
     if ref_cpu_time is None:
         return None
-    ref_memory = __get_reference__(test_id, "memory_avg")
-    ref_read = __get_reference__(test_id, "io_read")
-    _, cpu_time = __history__(test_id, tag, "cpu_time", None)
+    ref_memory = await __get_reference__(test_id, "memory_avg")
+    ref_read = await __get_reference__(test_id, "io_read")
+    _, cpu_time = await __history__(test_id, tag, "cpu_time", None)
     if not len(cpu_time):
         return None
-    _, memory = __history__(test_id, tag, "memory_avg", None)
-    _, read = __history__(test_id, tag, 'io_read', None)
+    _, memory = await __history__(test_id, tag, "memory_avg", None)
+    _, read = await __history__(test_id, tag, 'io_read', None)
     res = {}
     res['cpu'] = {
         'last': cpu_time[0],
@@ -264,9 +264,9 @@ def get_status_fulldata_dict(test_id, tag):
     return res
 
 
-def get_status_dict(test_id, tag):
+async def get_status_dict(test_id, tag):
     """Get branch test status."""
-    res = get_status_fulldata_dict(test_id, tag)
+    res = await get_status_fulldata_dict(test_id, tag)
     if not res:
         return None
     for key in res:
@@ -279,9 +279,9 @@ def get_status_dict(test_id, tag):
     return res
 
 
-def get_status(test_id, tag):
+async def get_status(test_id, tag):
     """Get branch test status."""
-    res = get_status_dict(test_id, tag)
+    res = await get_status_dict(test_id, tag)
     if res is None:
         return text("No reference values found", status=500)
     return json(res)

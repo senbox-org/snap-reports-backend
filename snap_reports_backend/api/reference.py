@@ -11,7 +11,7 @@ reference = Blueprint('api_reference', url_prefix='/reference')
 @reference.route("/list")
 async def get_references(_):
     """Retrieve list of references."""
-    rows = DB.fetchall("""
+    rows = await DB.fetchall("""
     SELECT
         id, test, referenceTag, updated, duration, cpu_time, cpu_usage_avg,
         cpu_usage_max, memory_avg, memory_max, io_write, io_read, threads_avg,

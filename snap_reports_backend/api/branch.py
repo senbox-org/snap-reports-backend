@@ -40,7 +40,7 @@ def __init_result__():
 async def get_branch_summary(_, tag):
     """Get branch statistics summary."""
     tests = support.get_test_list(branch=tag)
-    res = __init_result__()
+    res = await __init_result__()
     for test in tests:
         stat = performances.get_status_dict(test, tag)
         if stat:
@@ -101,7 +101,7 @@ async def get_branch_details(_, tag):
 @branch.route("/<tag:string>/last_job")
 async def get_branch_last_job(_, tag):
     """Get last job of a given branch."""
-    row = DB.fetchone(f'''
+    row = await DB.fetchone(f'''
         SELECT jobs.ID, jobs.jobnum, jobs.timestamp_start, jobs.testScope, 
             resultTags.tag
         FROM jobs
@@ -115,15 +115,14 @@ async def get_branch_last_job(_, tag):
 @branch.route("/list")
 async def get_list(_):
     """Get list of branches."""
-    rows = DB.fetchall('SELECT ID, name FROM dockerTags;')
-    print(rows)
+    rows = await DB.fetchall('SELECT ID, name FROM dockerTags;')
     return json({'branches': rows})
 
 
 @branch.route("/<tag:string>/njobs")
 async def get_branch_njobs(_, tag):
     """Get number of jobs executed of a given branch."""
-    row = DB.fetchone(f'''
+    row = await DB.fetchone(f'''
         SELECT COUNT(ID) 
         FROM jobs
         WHERE dockerTag = (

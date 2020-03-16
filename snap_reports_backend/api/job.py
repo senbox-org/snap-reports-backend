@@ -32,7 +32,7 @@ async def job_list(request):
 
     if query_str:
         query_str = "WHERE " + query_str
-    rows = DB.fetchall("SELECT * FROM jobs "+query_str + " ORDER BY id DESC")
+    rows = await DB.fetchall("SELECT * FROM jobs "+query_str + " ORDER BY id DESC")
     # for value in rows:
         # value['dockerTag'] = support.convert_tag(value['dockerTag'])
         # value['result'] = support.convert_result(value['result'])
@@ -55,7 +55,7 @@ async def job_list_by_tag(_, tag):
      - tag: frequency tag
     """
     tag = tag.lower()
-    rows = DB.fetchall(
+    rows = await DB.fetchall(
         f"SELECT * FROM jobs WHERE LOWER(testScope) = '{tag}' ORDER BY id")
     res = []
     for row in rows:
@@ -75,14 +75,15 @@ async def get_job(_, job_id):
     -----------
      - id: job id
     """
-    job_id = support.get_id(job_id, 'jobs')
+    job_id = await support.get_id(job_id, 'jobs')
     if job_id is None:
         return text("Option non valid", status=500)
-    res = support.get_job(job_id)
+    res = await support.get_job(job_id)
+    
     if res is None:
         return text("Something bad happened", status=500)
     return json(res)
-
+    
 
 @job.route("/<job_id>/statistics")
 async def get_job_results(_, job_id):
@@ -116,7 +117,7 @@ async def get_job_exec_stat(_, job_id, exec_id):
     if job_obj is None:
         return text("Job do not exist", status=404)
 
-    val = DB.fetchone(f"""
+    val = await DB.fetchone(f"""
         SELECT *
         FROM results WHERE job = '{job_id}' AND test = '{exec_id}'""")
     if val:
@@ -144,7 +145,7 @@ async def get_job_summary(_, job_id):
     if job_obj is None:
         return text("Job do not exist", status=404)
 
-    rows = DB.fetchall(f"""
+    rows = await DB.fetchall(f"""
         SELECT
             test, result, duration, cpu_time, memory_avg, memory_max, io_read,
             io_write
@@ -216,7 +217,7 @@ async def get_testsets_summary(_, job_id):
     if job_obj is None:
         return text("Job do not exist", status=404)
 
-    rows = DB.fetchone(f"""
+    rows = await DB.fetchone(f"""
         SELECT
             test, result, duration, cpu_time, memory_avg, memory_max, io_read,
             io_write

@@ -2,7 +2,8 @@
 Simple interface for MySQL and SQLite DB.
 """
 import sqlite3
-import pymysql
+import asyncio
+import aiomysql
 import time
 
 
@@ -12,14 +13,14 @@ class SQLiteInterface:
         self.connection = sqlite3.connect(dbname)
         self.connection.row_factory = sqlite3.Row
 
-    def execute(self, query, *args):
+    async def execute(self, query, *args):
         """Execute query."""
         cursor = self.connection.cursor()
         cursor.execute(query, *args)
         self.connection.commit()
         cursor.close()
 
-    def fetchall(self, query, *args):
+    async def fetchall(self, query, *args):
         """Fetch all rows of a query."""
         cursor = self.connection.cursor()
         res = cursor.execute(query, *args)
@@ -28,7 +29,7 @@ class SQLiteInterface:
         cursor.close()
         return [dict(row) for row in rows]
 
-    def fetchone(self, query, *args):
+    async def fetchone(self, query, *args):
         """Fetch one row of a query."""
         cursor = self.connection.cursor()
         res = cursor.execute(query, *args)
@@ -47,11 +48,12 @@ class SQLiteInterface:
         self.close()
 
 
-def r2d(row):
+def r2d(row, desc):
     """Convert row to dictionary."""
     res = {}
-    for key in row:
-        res[str(key)] = v2v(row[key])
+    for i, col in enumerate(desc):
+        key = str(col[0])
+        res[key] = v2v(row[i])
     return res
 
 def a2v(xs):
@@ -73,73 +75,52 @@ def v2v(x):
 class MySQLInterfce:
     """MySQL interface."""
     def __init__(self, dbname):
-        self.dbusr, self.dbpwd = dbname.split('@')[0].split(':')
+        self.user, self.password = dbname.split('@')[0].split(':')
         self.db_name = dbname.split('@')[1].split('/')[1]
         self.host, self.port = dbname.split('@')[1].split('/')[0].split(':')
-        self.connection = None
-        self.__open__()
+        self.port = int(self.port)
 
-    def __open__(self):
-        print('Connecting to DB', end='', flush=True)
-        while True:
-            print('.', end='', flush=True)
-            try:
-                connection = pymysql.connect(
-                    host=self.host,
-                    port=int(self.port),
-                    user=self.dbusr,
-                    password=self.dbpwd,
-                    db=self.db_name,
-                    cursorclass=pymysql.cursors.DictCursor
-                )
-                if connection.open:
-                    self.connection = connection
-                    print("[DONE]")
-                    return True
-                time.sleep(5)
-            except pymysql.err.OperationalError:
-                time.sleep(5)
+    async def __open__(self):
+        loop = asyncio.get_event_loop()
+        conn = await aiomysql.connect(host=self.host, port=self.port,
+                                    user=self.user, password=self.password,
+                                    db=self.db_name, loop=loop)
+        return conn
 
-    def is_connected(self):
-        """Check MySQL connection."""
-        return self.connection and self.connection.open
-
-    def execute(self, query, *args):
+    async def execute(self, query, *args):
         """Execute query."""
-        if self.is_connected():
-            with self.connection.cursor() as cursor:
-                cursor.execute(query, *args)
-            self.connection.commit()
+        conn = await self.__open__()
+        async with conn.cursor() as cursor:
+            await cursor.execute(query, *args)
+        conn.close()
 
-    def fetchall(self, query, *args):
+    async def fetchall(self, query, *args):
         """Fetch all rows of a query."""
-        if self.is_connected():
-            rows = []
-            with self.connection.cursor() as cursor:
-                cursor.execute(query, *args)
-                rows = cursor.fetchall()
-            self.connection.commit()
-            return [r2d(row) for row in rows]
-        return []
+        conn = await self.__open__()
+        res = []   
+        async with conn.cursor() as cursor:
+            print ("------------ FETCH ALL ------------")
+            print(query)
+            await cursor.execute(query, *args)
+            desc = cursor.description
+            rows = await cursor.fetchall()
+            for row in rows:
+                res.append(r2d(row, desc))        
+            conn.close()
+        return res
 
-    def fetchone(self, query, *args):
+    async def fetchone(self, query, *args):
         """Fetch one row of a query."""
-        if self.is_connected():
-            row = None
-            with self.connection.cursor() as cursor:
-                cursor.execute(query, *args)
-                row = cursor.fetchone()
-            self.connection.commit()
-            return r2d(row)
-        return None
+        conn = await self.__open__()
+        obj = None
+        async with conn.cursor() as cursor:            
+            await cursor.execute(query, *args)
+            desc = cursor.description
+            row = await cursor.fetchone()
+            obj = r2d(row, desc)
+        conn.close()
+        return obj
 
-    def close(self):
-        """Close connection."""
-        if self.is_connected():
-            self.connection.close()
-
-    def __del__(self):
-        self.close()
 
 def get_interface(mode, name):
     """Return correct DB interface given the current configuration."""

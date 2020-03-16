@@ -15,7 +15,7 @@ setup(
     author='Martino Ferrari',
     author_email='martino.ferrari@c-s.fr',
     packages=setuptools.find_packages(),
-    install_requires=['sanic', 'sanic-cors', 'pymysql', 'cryptography'],
+    install_requires=['sanic', 'sanic-cors', 'aiomysql', 'uvloop', 'cryptography'],
     scripts=['scripts/updatereferences.py'],
     python_requires='>=3.6'
 )

@@ -1,4 +1,5 @@
 sanic
 sanic-cors
 cryptography
-pymysql
+aiomysql
+uvloop

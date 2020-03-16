@@ -5,7 +5,11 @@ from sanic import Sanic
 from sanic.response import text, json
 from sanic_cors import CORS
 import dbfactory
+import uvloop
+import asyncio
 
+# setup event loop policy
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 # initialization of DB and server app.
 if len(sys.argv) < 2:
@@ -30,26 +34,15 @@ TAGS = None
 RESULTS = None
 
 
-def __init_tags__():
-    rows = DB.fetchall("SELECT ID, name FROM dockerTags")
-    if rows:
-        res = {}
-        for row in rows:
-            res[row['ID']] = row['name']
-        return res
-    return None
+async def __tag__(id):
+    return await DB.fetchone(f"SELECT ID, name FROM dockerTags WHERE ID='{id}'")
 
 
-def __init_results__():
-    rows = DB.fetchall("SELECT ID, tag FROM resultTags")
-    if rows:
-        res = {}
-        for row in rows:
-            res[row['ID']] = row['tag']
-        return res
-    return None
+async def __result__(id):
+    return await DB.fetchone(f"SELECT ID, tag FROM resultTags WHERE ID='{id}'")
 
-def get_test(test_id):
+
+async def get_test(test_id):
     """
     Retrieve test information.
 
@@ -57,11 +50,11 @@ def get_test(test_id):
     -----------
      -  test_id : db test id
     """
-    rows = DB.fetchall(f"SELECT * FROM tests where id='{test_id}'")
+    rows = await DB.fetchall(f"SELECT * FROM tests where id='{test_id}'")
     return rows
 
 
-def get_job(job_id):
+async def get_job(job_id):
     """
     Retrieve job inforation.
 
@@ -69,13 +62,13 @@ def get_job(job_id):
     ----------
      - job_id: db job id
     """
-    res = DB.fetchone(f"SELECT * FROM jobs WHERE id = '{job_id}'")
-    res['dockerTag'] = convert_tag(res['dockerTag'])
-    res['result'] = convert_result(res['result'])
+    res = await DB.fetchone(f"SELECT * FROM jobs WHERE id = '{job_id}'")
+    res['dockerTag'] = await convert_tag(res['dockerTag'])
+    res['result'] = await convert_result(res['result'])
     return res
 
 
-def convert_tag(tag_id):
+async def convert_tag(tag_id):
     """
     Convert dockerTag:id to dockerTag object.
 
@@ -83,37 +76,23 @@ def convert_tag(tag_id):
     -----------
      - tag_id: tag name
     """
-    global TAGS
-    if not TAGS:
-        TAGS = __init_tags__()
-    return {
-        "id": tag_id,
-        "name": TAGS[tag_id]
-    }
+    return await __tag__(tag_id)
 
-
-def convert_result(res_id):
+async def convert_result(res_id):
     """Convert result:id to result object."""
-    global RESULTS
-    if not RESULTS:
-        RESULTS = __init_results__()
-    return {
-        "id": res_id,
-        "tag": RESULTS[res_id]
-    }
+    return await __result__(res_id)
 
-
-def __get_last_id__(table):
-    res = DB.fetchone(f"SELECT max(id) FROM {table}")
+async def __get_last_id__(table):
+    res = await DB.fetchone(f"SELECT max(id) FROM {table}")
     return res[0]
 
 
-def __get_first_id__(table):
-    res = DB.fetchone(f"SELECT min(id) FROM {table}")
+async def __get_first_id__(table):
+    res = await DB.fetchone(f"SELECT min(id) FROM {table}")
     return res[0]
 
 
-def get_id(req, table):
+async def get_id(req, table):
     """
     Convert request ids to real DB id of a given table.
 
@@ -125,15 +104,15 @@ def get_id(req, table):
     elif isinstance(req, str):
         low = req.lower()
         if low == 'last':
-            res_id = __get_last_id__(table)
-        if low == 'first':
-            res_id = __get_first_id__(table)
+            res_id = await __get_last_id__(table)
+        if low == 'first': 
+            res_id = await __get_first_id__(table)
         if req.isdigit():
             res_id = int(req)
     return res_id
 
 
-def get_test_id(test):
+async def get_test_id(test):
     """
     Expand get_id function for test table.
 
@@ -149,19 +128,19 @@ def get_test_id(test):
             return __get_last_id__('tests')
         if test.lower() == 'first':
             return __get_first_id__('tests')
-        row = DB.fetchone(f"SELECT ID FROM tests where name='{test}'")
+        row = await DB.fetchone(f"SELECT ID FROM tests where name='{test}'")
         if row:
             return row['ID']
     return None
 
 
-def get_job_stats(job_id):
+async def get_job_stats(job_id):
     """Get job statistics."""
-    job = get_job(job_id)
+    job = await get_job(job_id)
     if job is None:
         return text("Job do not exist", status=404)
 
-    rows = DB.fetchall(f"""
+    rows = await DB.fetchall(f"""
         SELECT
             ID, test, job, result, start, duration, cpu_time, cpu_usage_avg,
             cpu_usage_max, memory_avg, memory_max, io_write, io_read,
@@ -170,8 +149,8 @@ def get_job_stats(job_id):
     res = []
     for row in rows:
         val = row
-        val['result'] = convert_result(val['result'])
-        val['test'] = get_test(val['test'])
+        val['result'] = await convert_result(val['result'])
+        val['test'] = await get_test(val['test'])
         val['job'] = job
         res.append(val)
 
@@ -180,7 +159,7 @@ def get_job_stats(job_id):
     return json({'statistics': res})
 
 
-def get_test_list(branch=None):
+async def get_test_list(branch=None):
     """Get test list."""
     query = "SELECT DISTINCT test FROM results WHERE"
     if branch:
@@ -188,11 +167,11 @@ def get_test_list(branch=None):
             SELECT ID FROM dockerTags WHERE name = 'snap:{branch}'
         ))"""
     query += " ORDER BY ID"
-    rows = DB.fetchall(query)
+    rows = await DB.fetchall(query)
     return [row['test'] for row in rows]
 
 
-def get_tests(branch=None):
+async def get_tests(branch=None):
     """Get full tests."""
     query = """SELECT * FROM tests WHERE ID IN
         (SELECT DISTINCT test FROM results WHERE
@@ -204,7 +183,3 @@ def get_tests(branch=None):
     query += ") ORDER BY ID"
     return DB.fetchall(query)
 
-
-# INITILIZE TAGS AND RESULTS TABLES
-TAGS = __init_tags__()
-RESULTS = __init_results__()
