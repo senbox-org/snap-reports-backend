@@ -136,7 +136,7 @@ async def __get_reference__(test_id, field, cursor=None):
     if cursor:
         row = await dbfactory.fetchone(cursor, query)
     else:
-        row = await DB.fetchone()
+        row = await DB.fetchone(query)
     if not row:
         return None
     return row[field]

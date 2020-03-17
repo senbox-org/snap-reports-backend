@@ -50,8 +50,8 @@ async def get_test(test_id):
     -----------
      -  test_id : db test id
     """
-    rows = await DB.fetchall(f"SELECT * FROM tests where id='{test_id}'")
-    return rows
+    row = await DB.fetchone(f"SELECT * FROM tests where id='{test_id}'")
+    return row
 
 
 async def get_job(job_id):

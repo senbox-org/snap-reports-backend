@@ -37,74 +37,47 @@ def __init_result__():
         }
     }
 
-async def __stats_N__(cursor, tag, field, last=None):
+async def __stats_N__(cursor, tag, last=None):
     query = f"""
-    SELECT AVG({field})
-    From results 
-    Join (
-        SELECT ID from jobs where 
-        dockerTag = 
-            (SELECT ID from dockerTags WHERE name='snap:{tag}')
-        ORDER BY ID DESC {'LIMIT '+str(last) if last else ''}
-    ) jobs ON job IN (jobs.ID)
+    SELECT 
+        COUNT(results.ID), 
+        AVG((reference_values.cpu_time - results.cpu_time)/ reference_values.cpu_time * 100), 
+        AVG((reference_values.memory_avg - results.memory_avg)/reference_values.memory_avg * 100), 
+        AVG((reference_values.io_read - results.io_read) / reference_values.io_read * 100),
+        SUM(reference_values.cpu_time > results.cpu_time),
+        SUM(reference_values.memory_avg > results.memory_avg),
+        SUM(reference_values.io_read > results.io_read),
+        SUM(reference_values.io_read > results.io_read AND 
+            reference_values.memory_avg > results.memory_avg AND
+            reference_values.cpu_time > results.cpu_time)
+    FROM results 
+    JOIN (
+            SELECT ID from jobs where 
+            dockerTag = 
+                (SELECT ID from dockerTags WHERE name='snap:{tag}')
+            ORDER BY ID DESC {'LIMIT '+str(last) if last else ''}
+        ) jobs ON results.job IN (jobs.ID)
+    INNER JOIN resultTags ON
+        results.result = resultTags.ID
+    INNER JOIN reference_values ON
+        results.test = reference_values.test
     WHERE 
-        test in (select test from reference_values);
+        resultTags.tag = "SUCCESS";
     """
-
-    res = await dbfactory.fetchone(cursor, query)
-    avg = res[f'AVG({field})']
-
-    query = f"""
-    SELECT AVG(reference_values.{field})
-    From reference_values
-    inner Join results on reference_values.test = results.test
-    Join (
-        SELECT ID from jobs where 
-        dockerTag = 
-            (SELECT ID from dockerTags WHERE name='snap:{tag}')
-        ORDER BY ID DESC {'LIMIT '+str(last) if last else ''}
-    ) jobs on results.job In (jobs.ID);
-    """
-    res = await dbfactory.fetchone(cursor, query)
-    ref = res[f'AVG(reference_values.{field})']
-    return float(avg) / float(ref) * 100
-
-async def __stats__(cursor, tag, field):
+    row = await dbfactory.fetchone(cursor, query)
+    values = list(row.values()) 
     return {
-        'last': await __stats_N__(cursor, tag, field, 1),
-        'last10': await __stats_N__(cursor, tag, field, 10),
-        'average': await __stats_N__(cursor, tag, field, None)
+        'count': values[0],
+        'cpu': values[1],
+        'memory': values[2],
+        'read': values[3],
+        'improved': {
+            'cpu': values[4],
+            'memory': values[5],
+            'read': values[6],
+            'both': values[7] 
+        }
     }
-
-async def __improved__(cursor, tag, *fields):
-    query = f'''
-    SELECT COUNT(results.ID) 
-    From results 
-    Join (
-        SELECT ID from jobs where 
-        dockerTag = 
-            (SELECT ID from dockerTags WHERE name='snap:{tag}')
-        ORDER BY ID DESC LIMIT 10
-    ) jobs on results.job In (jobs.ID);
-    '''
-    row = await dbfactory.fetchone(cursor, query)
-    count = row['COUNT(results.ID)']
-    query = f'''
-    SELECT COUNT(results.ID) 
-    From results 
-    Join (
-        SELECT ID from jobs where 
-        dockerTag = 
-            (SELECT ID from dockerTags WHERE name='snap:{tag}')
-        ORDER BY ID DESC LIMIT 10
-    ) jobs on results.job In (jobs.ID)
-    INNER JOIN reference_values ON results.test = reference_values.test
-    WHERE 
-    '''
-    query += ' AND '.join([f'results.{field} < reference_values.{field}' for field in fields])
-    row = await dbfactory.fetchone(cursor, query)
-    improved = row['COUNT(results.ID)']
-    return int(improved) / int(count) * 100
 
 
 @branch.route("/<tag:string>/summary")
@@ -113,22 +86,21 @@ async def get_branch_summary(_, tag):
     conn = await DB.open()
     async with conn.cursor() as cursor:
         res = __init_result__()
-        row = await dbfactory.fetchone(cursor, f"""
-            SELECT COUNT(ID)
-            From results 
-            WHERE job in 
-                (SELECT ID 
-                 FROM jobs 
-                 WHERE dockerTag = 
-                    (SELECT ID from dockerTags WHERE name='snap:{tag}')
-                ) 
-            AND test in (select test from reference_values);""")
-        res['count'] = row['COUNT(ID)']
+        
+        data = {
+            'last': await __stats_N__(cursor, tag, 1),
+            'last10': await __stats_N__(cursor, tag, 10),
+            'average': await __stats_N__(cursor, tag, None),
+        }
+        res['count'] = data['last10']['count']
+        res['improved'] = data['last10']['improved']
 
-        for key, field in [('cpu', 'cpu_time'), ('memory', 'memory_avg'), ('read', 'io_read')]:
-            res[key] = await __stats__(cursor, tag, field)
-            res['improved'][key] = await __improved__(cursor, tag, field)
-        res['improved']['both'] = await __improved__(cursor, tag, 'cpu_time', 'memory_avg', 'io_read')
+        for key in ('cpu', 'memory', 'read'):
+            res[key] = {
+                'last': data['last'][key],
+                'last10': data['last10'][key],
+                'average': data['average'][key]
+            }
 
         return json(res)
 
@@ -150,17 +122,50 @@ async def get_branch_summary_absolute(_, tag):
     return json(res)
 
 
+async def __details_N__(tag, num):
+    query = f"""
+    SELECT 
+        tests.ID AS test_ID, 
+        tests.name AS test_name, 
+        COUNT(results.ID) AS num_exec, 
+        AVG(results.duration) AS res_duration,  
+        AVG(results.cpu_time) AS res_cpu,
+        AVG(results.memory_avg) AS res_memory, 
+        AVG(results.io_read) AS res_read, 
+        AVG(reference_values.duration) AS ref_duration, 
+        AVG(reference_values.cpu_time) AS ref_cpu,
+        AVG(reference_values.memory_avg) AS ref_memory, 
+        AVG(reference_values.io_read) AS ref_read
+    FROM results 
+    JOIN (
+        SELECT ID from jobs where 
+        dockerTag = 
+            (SELECT ID from dockerTags WHERE name='snap:{tag}')
+        ORDER BY ID DESC {'LIMIT '+str(num) if num else ''}
+    ) jobs on results.job In (jobs.ID)
+    INNER JOIN reference_values ON
+        results.test = reference_values.test
+    INNER JOIN tests ON
+        results.test = tests.ID
+    INNER JOIN resultTags ON
+        results.result = resultTags.ID
+    WHERE 
+        resultTags.tag = 'SUCCESS'
+    GROUP BY tests.ID;
+    """
+    stats = await DB.fetchall(query)
+    return stats
+
+
 @branch.route("/<tag:string>/details")
 async def get_branch_details(_, tag):
     """Get branch statistics summary."""
-    tests = await support.get_tests(branch=tag)
-    res = []
-    for test in tests:
-        stat = await performances.get_status_fulldata_dict(test['ID'], tag)
-        if stat:
-            stat['test'] = test
-            res.append(stat)
-    return json({'details': res})
+    return json({'details': await __details_N__(tag, None)})
+
+@branch.route("/<tag:string>/details/<N:int>")
+async def get_branch_details(_, tag, N):
+    """Get branch statistics summary."""
+    return json({'details': await __details_N__(tag, N)})
 
 
 @branch.route("/<tag:string>/last_job")

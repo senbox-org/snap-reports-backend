@@ -5,6 +5,7 @@ import sqlite3
 import asyncio
 import aiomysql
 import time
+import decimal
 
 
 class SQLiteInterface:
@@ -64,11 +65,17 @@ def a2v(xs):
 
 def v2v(x):
     """Convert value to value."""
+    if x is None:
+        return None
     tx = type(x)
     if tx == list:
         return a2v(x)
     if tx == dict:
         return d2v(x)
+    if tx == decimal.Decimal:
+        return float(x)
+    if tx == bytes:
+        return x.decode('utf-8')
     if tx in (str, int, float):
         return x
     return str(x)
