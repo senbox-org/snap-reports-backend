@@ -293,3 +293,37 @@ async def get_status(test_id, tag):
     if res is None:
         return text("No reference values found", status=500)
     return json(res)
+
+
+async def get_branch_field_history(tag, field):
+    """Get history of a field for a branch, realative to reference."""
+    if field not in FIELDS:
+        return None
+    query = f"""
+    SELECT jobs.timestamp_start AS time, AVG(results.{field})/AVG(reference_values.{field}) AS value
+    FROM results
+    INNER JOIN reference_values ON reference_values.test = results.test
+    INNER JOIN jobs ON jobs.ID = results.job
+    WHERE jobs.dockerTag = (SELECT ID FROM dockerTags WHERE name='snap:{tag}') 
+        AND results.result = (SELECT ID FROM resultTags WHERE tag='SUCCESS')
+    GROUP BY jobs.ID
+    ORDER BY jobs.timestamp_start DESC;
+    """
+    stats = await DB.fetchall(query)
+    timestamp = [x['time'] for x in stats]
+    values = [x['value'] for x in stats]
+    return timestamp, values
+
+async def get_branch_field_history_moving_average(tag, field, window):
+    res = await get_branch_field_history(tag, field)
+    if res is None:
+        return None
+    dates, values = res
+    dates = [datetime.fromisoformat(x).timestamp() for x in dates]
+    sub_x = []
+    sub_y = []
+    for i in range(window, len(dates)):
+        sub_x.append(statistics.mean(dates[i-window:i]))
+        sub_y.append(statistics.mean(values[i-window:i]))
+    sub_x = [datetime.fromtimestamp(x).strftime('%Y-%m-%d %H:%M:%S') for x in sub_x]
+    return sub_x, sub_y

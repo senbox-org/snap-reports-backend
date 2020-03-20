@@ -44,12 +44,18 @@ async def __stats_N__(cursor, tag, last=None):
         AVG((reference_values.cpu_time - results.cpu_time)/ reference_values.cpu_time * 100), 
         AVG((reference_values.memory_avg - results.memory_avg)/reference_values.memory_avg * 100), 
         AVG((reference_values.io_read - results.io_read) / reference_values.io_read * 100),
-        SUM(reference_values.cpu_time > results.cpu_time),
-        SUM(reference_values.memory_avg > results.memory_avg),
-        SUM(reference_values.io_read > results.io_read),
-        SUM(reference_values.io_read > results.io_read AND 
-            reference_values.memory_avg > results.memory_avg AND
-            reference_values.cpu_time > results.cpu_time)
+        SUM(reference_values.cpu_time * 0.97 > results.cpu_time),
+        SUM(reference_values.memory_avg * 0.97 > results.memory_avg),
+        SUM(reference_values.io_read * 0.97 > results.io_read),
+        SUM(reference_values.io_read * 0.97 > results.io_read AND 
+            reference_values.memory_avg * 0.97 > results.memory_avg AND
+            reference_values.cpu_time * 0.97 > results.cpu_time),
+        SUM(reference_values.cpu_time * 1.03 < results.cpu_time),
+        SUM(reference_values.memory_avg * 1.03 < results.memory_avg),
+        SUM(reference_values.io_read * 1.03 < results.io_read),
+        SUM(reference_values.io_read  * 1.03 < results.io_read AND 
+            reference_values.memory_avg * 1.03 < results.memory_avg AND
+            reference_values.cpu_time  * 1.03 < results.cpu_time)
     FROM results 
     JOIN (
             SELECT ID from jobs where 
@@ -76,6 +82,12 @@ async def __stats_N__(cursor, tag, last=None):
             'memory': values[5],
             'read': values[6],
             'both': values[7] 
+        },
+        'regressed': {
+            'cpu': values[8],
+            'memory': values[9],
+            'read': values[10],
+            'both': values[11] 
         }
     }
 
@@ -94,6 +106,7 @@ async def get_branch_summary(_, tag):
         }
         res['count'] = data['last10']['count']
         res['improved'] = data['last10']['improved']
+        res['regressed'] = data['last10']['regressed']
 
         for key in ('cpu', 'memory', 'read'):
             res[key] = {
@@ -121,6 +134,22 @@ async def get_branch_summary_absolute(_, tag):
                         res[key][sub_key] += value
     return json(res)
 
+
+@branch.route("/<tag:string>/history/<field:string>")
+async def get_branch_field_history(_, tag, field):
+    result = await performances.get_branch_field_history(tag, field) 
+    if  result is None:
+        return text(f"Field `{field}` does not exist", status=500)
+    dates, values = result
+    return json({"date": dates, "value": values})
+
+@branch.route("/<tag:string>/history/<field:string>/<window:int>")
+async def get_branch_field_history_ma(_, tag, field, window):
+    result = await performances.get_branch_field_history_moving_average(tag, field, window) 
+    if  result is None:
+        return text(f"Field `{field}` does not exist", status=500)
+    dates, values = result
+    return json({"date": dates, "value": values})
 
 async def __details_N__(tag, num):
     query = f"""
