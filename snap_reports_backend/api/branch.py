@@ -157,6 +157,36 @@ async def __details_N__(tag, num):
     return stats
 
 
+
+@branch.route("/<tag:string>/details/last")
+async def get_branch_details(_, tag):
+    """Get branch statistics summary."""
+    query = f"""
+    SELECT 
+        tests.ID AS test_ID, tests.name AS name, 
+        results.ID AS result_ID, results.job, resultTags.tag AS result, 
+        results.start, results.duration / ref.duration AS duration, 
+        results.cpu_time / ref.cpu_time AS cpu_time,
+        results.memory_avg / ref.memory_avg AS memory_avg, 
+        results.memory_max / ref.memory_max AS memory_max, 
+        results.io_read / ref.io_read AS io_read, 
+        results.io_write / ref.io_write AS io_write
+    FROM tests
+    INNER JOIN reference_values AS ref ON ref.test = tests.ID
+    INNER JOIN results ON results.test = tests.ID
+    JOIN (
+            SELECT test, max(job) AS lastJob 
+            FROM results 
+            WHERE job IN
+                (SELECT ID FROM jobs WHERE dockerTag = (SELECT ID FROM dockerTags WHERE name = 'snap:{tag}')) 
+            GROUP BY test
+        ) filtr ON filtr.test = results.test AND filtr.lastJob = results.job
+    INNER JOIN resultTags ON results.result = resultTags.ID
+    ORDER BY tests.ID;
+    """
+    stats = await DB.fetchall(query)
+    return json(stats)
+
 @branch.route("/<tag:string>/details")
 async def get_branch_details(_, tag):
     """Get branch statistics summary."""
