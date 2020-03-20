@@ -300,7 +300,7 @@ async def get_branch_field_history(tag, field):
     if field not in FIELDS:
         return None
     query = f"""
-    SELECT jobs.timestamp_start AS time, AVG(results.{field})/AVG(reference_values.{field}) AS value
+    SELECT jobs.timestamp_start AS time, (100 - 100 * AVG(results.{field})/AVG(reference_values.{field})) AS value
     FROM results
     INNER JOIN reference_values ON reference_values.test = results.test
     INNER JOIN jobs ON jobs.ID = results.job
