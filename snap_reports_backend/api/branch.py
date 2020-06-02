@@ -1,6 +1,6 @@
 """Implement api/branch apis."""
 from sanic import Blueprint
-from sanic.response import json
+from sanic.response import json, text
 
 import support
 import performances
@@ -9,6 +9,8 @@ import dbfactory
 
 
 branch = Blueprint('api_branch', url_prefix='/branch')
+
+FIELD_SET = ('cpu_time', 'memory_avg', 'memory_max', 'duration', 'io_read', 'io_write')
 
 
 def __init_result__():
@@ -260,3 +262,105 @@ async def get_branch_njobs(_, tag):
             WHERE name='snap:{tag}'
         );''')
     return json({'njobs': row['COUNT(ID)']})
+
+
+@branch.route("/compare/<tag_a:string>/<tag_b:string>/<field:string>")
+async def get_branch_comparison(_, tag_a, tag_b, field):
+    """
+    Compare a specific field of two different branches
+
+    Parameters
+    ----------
+     - tag_a: first branch tag
+     - tag_b: second branch tag
+     - field: field to examine (CPU Time, Memory etc)
+    """
+    if field.lower() not in FIELD_SET:
+        return text(f"Field `{field}` does not exist", status=500)
+
+    intersect_query = f"""
+    SELECT
+    DISTINCT results.test
+    FROM results
+    INNER JOIN jobs ON jobs.ID = results.job
+    WHERE 
+        jobs.dockerTag = (SELECT ID FROM dockerTags WHERE name='snap:{tag_a}')
+        AND
+        results.result = (SELECT ID FROM resultTags WHERE tag='SUCCESS')
+        AND
+        results.test in  (
+            SELECT DISTINCT
+            results.test
+            FROM results
+            INNER JOIN jobs ON jobs.ID = results.job
+            WHERE 
+                jobs.dockerTag = (SELECT ID FROM dockerTags WHERE name='snap:{tag_b}')
+                AND
+                results.result = (SELECT ID FROM resultTags WHERE tag='SUCCESS'))
+    """
+
+    query_a = f"""
+    SELECT 
+        tests.ID AS test_ID, 
+        tests.name AS test_name, 
+        COUNT(results.ID) AS num_exec, 
+        AVG(results.{field.lower()}) AS field
+    FROM results 
+    JOIN (
+        SELECT ID from jobs where 
+        dockerTag = 
+            (SELECT ID from dockerTags WHERE name='snap:{tag_a}')
+        ORDER BY ID DESC
+    ) jobs on results.job In (jobs.ID)
+    INNER JOIN tests ON
+        results.test = tests.ID
+    INNER JOIN resultTags ON
+        results.result = resultTags.ID
+    WHERE 
+        resultTags.tag = 'SUCCESS'
+    AND 
+        tests.ID in ({intersect_query})
+    GROUP BY tests.ID;
+    """
+
+    query_b = f"""
+    SELECT 
+        tests.ID AS test_ID, 
+        tests.name AS test_name, 
+        COUNT(results.ID) AS num_exec, 
+        AVG(results.{field.lower()}) AS field
+    FROM results 
+    JOIN (
+        SELECT ID from jobs where 
+        dockerTag = 
+            (SELECT ID from dockerTags WHERE name='snap:{tag_b}')
+        ORDER BY ID DESC
+    ) jobs on results.job In (jobs.ID)
+    INNER JOIN tests ON
+        results.test = tests.ID
+    INNER JOIN resultTags ON
+        results.result = resultTags.ID
+    WHERE 
+        resultTags.tag = 'SUCCESS'
+    AND 
+        tests.ID in ({intersect_query})
+    GROUP BY tests.ID;
+    """
+    stats_a = await DB.fetchall(query_a)
+    stats_b = await DB.fetchall(query_b)
+    results = []
+    search = lambda lst, test_id: [i for i, el in enumerate(lst) if el['test_ID'] == test_id][0]
+    for el_a in stats_a:
+        id_b = search(stats_b, el_a['test_ID'])
+        el_b = stats_b[id_b]
+        stats_b.pop(id_b)
+        val = {
+            'test_ID': el_a['test_ID'],
+            'test_name': el_a['test_name'],
+            'br_a_count': el_a['num_exec'],
+            'br_b_count': el_b['num_exec'],
+            'br_a_avg': el_a['field'],
+            'br_b_avg': el_b['field']
+        }
+        results.append(val)
+    return json(results)
