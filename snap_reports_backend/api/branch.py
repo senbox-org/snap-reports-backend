@@ -344,7 +344,8 @@ async def get_branch_comparison(_, tag_a, tag_b, field):
         resultTags.tag = 'SUCCESS'
     AND 
         tests.ID in ({intersect_query})
-    GROUP BY tests.ID;
+    GROUP BY tests.ID
+    ORDER BY tests.ID ASC;
     """
     stats_a = await DB.fetchall(query_a)
     stats_b = await DB.fetchall(query_b)
