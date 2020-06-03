@@ -281,7 +281,10 @@ async def get_branch_comparison(request, tag_a, tag_b, field):
     q_filter = ''
     for key in request.args:
         value = request.args[key][0]
-        q_filter += f" AND UPPER(tests.{key}) = '{value.upper()}'"
+        if key == 'author':
+            q_filter += f" AND UPPER(tests.{key}) = '{value.upper()}'"
+        else:
+            q_filter += f" AND tests.{key} LIKE '%{value}%'"
     
     intersect_query = f"""
     SELECT
