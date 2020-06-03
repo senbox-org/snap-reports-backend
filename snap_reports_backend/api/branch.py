@@ -265,19 +265,24 @@ async def get_branch_njobs(_, tag):
 
 
 @branch.route("/compare/<tag_a:string>/<tag_b:string>/<field:string>")
-async def get_branch_comparison(_, tag_a, tag_b, field):
+async def get_branch_comparison(request, tag_a, tag_b, field):
     """
     Compare a specific field of two different branches
 
     Parameters
     ----------
+     - request: request argument
      - tag_a: first branch tag
      - tag_b: second branch tag
      - field: field to examine (CPU Time, Memory etc)
     """
     if field.lower() not in FIELD_SET:
         return text(f"Field `{field}` does not exist", status=500)
-
+    q_filter = ''
+    for key in request.args:
+        value = request.args[key][0]
+        q_filter += f" AND UPPER(tests.{key}) = '{value.upper()}'"
+    
     intersect_query = f"""
     SELECT
     DISTINCT results.test
@@ -320,7 +325,9 @@ async def get_branch_comparison(_, tag_a, tag_b, field):
         resultTags.tag = 'SUCCESS'
     AND 
         tests.ID in ({intersect_query})
-    GROUP BY tests.ID;
+    {q_filter}
+    GROUP BY tests.ID
+    ORDER BY tests.ID ASC;
     """
 
     query_b = f"""
@@ -344,6 +351,7 @@ async def get_branch_comparison(_, tag_a, tag_b, field):
         resultTags.tag = 'SUCCESS'
     AND 
         tests.ID in ({intersect_query})
+    {q_filter}
     GROUP BY tests.ID
     ORDER BY tests.ID ASC;
     """
