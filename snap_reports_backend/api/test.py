@@ -152,7 +152,7 @@ async def get_test_last_job(_, tag):
         ''')
     return json(row)
 
-@test.route('/<tag>/graph')
+@test.route('/<tag>/graph.xml')
 async def get_test_xml(_, tag):
     """
     Retrive the test graph.
