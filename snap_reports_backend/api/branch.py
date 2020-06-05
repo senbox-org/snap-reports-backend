@@ -374,7 +374,7 @@ async def get_branch_comparison(request, tag_a, tag_b, field):
             'br_a_avg': el_a['field'],
             'br_b_avg': el_b['field'],
             'diff_abs': el_a['field'] - el_b['field'],
-            'diff_rel': (el_a['field'] - el_b['field']) / el_a['field'] * 100
+            'diff_rel': (el_a['field'] - el_b['field']) / el_b['field'] * 100
         }
         results.append(val)
     return json(results)
