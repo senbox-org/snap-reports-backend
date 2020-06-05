@@ -151,3 +151,20 @@ async def get_test_last_job(_, tag):
         ORDER BY jobs.ID DESC LIMIT 1;
         ''')
     return json(row)
+
+@test.route('/<tag>/graph')
+async def get_test_xml(_, tag):
+    """
+    Retrive the test graph.
+
+    Pramaters:
+    ----------
+     - tag: test identifier
+    """
+    test_id = await support.get_test_id(tag)
+    if test_id is None:
+        return text(f"Test `{tag}` not found", status=404)
+    query = f"SELECT graph FROM test_graph WHERE test='{test_id}';"
+    row = await DB.fetchone(query)
+    return text(row['graph'])
+    
