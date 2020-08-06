@@ -137,6 +137,24 @@ async def get_branch_summary_absolute(_, tag):
     return json(res)
 
 
+@branch.route("/<tag:string>/history/scheduled/<field:string>")
+async def get_branch_schduled_field_history(_, tag, field):
+    result = await performances.get_branch_scheduled_field_history(tag, field) 
+    if  result is None:
+        return text(f"Field `{field}` does not exist", status=500)
+    dates, values = result
+    return json({"date": dates, "value": values})
+
+
+@branch.route("/<tag:string>/history/scheduled/<field:string>/<window:int>")
+async def get_branch_scheduled_field_history_ma(_, tag, field, window):
+    result = await performances.get_branch_scheduled_field_history_moving_average(tag, field, window) 
+    if  result is None:
+        return text(f"Field `{field}` does not exist", status=500)
+    dates, values = result
+    return json({"date": dates, "value": values})
+
+
 @branch.route("/<tag:string>/history/<field:string>")
 async def get_branch_field_history(_, tag, field):
     result = await performances.get_branch_field_history(tag, field) 
