@@ -109,7 +109,7 @@ async def test_summary(test_id, tag=None):
         query += f"""
         AND job IN
             (SELECT ID FROM jobs WHERE dockerTag =
-                (SELECT ID FROM dockerTags WHERE name='snap:{tag}'));"""
+                (SELECT ID FROM dockerTags WHERE name='{tag}'));"""
     rows = await DB.fetchall(query)
     if not rows:
         return text("No rows found", status=500)
@@ -171,7 +171,7 @@ async def __history__(test_id, tag, field, last_n, cursor=None):
             FROM results
             WHERE test = '{test_id}' AND result = '1'
             AND job IN (SELECT id FROM jobs WHERE dockerTag =
-                (SELECT id FROM dockerTags WHERE name='snap:{tag}'))
+                (SELECT id FROM dockerTags WHERE name='{tag}'))
             ORDER BY start DESC
             """
     else:
@@ -304,7 +304,7 @@ async def get_branch_scheduled_field_history(tag, field):
     FROM results
     INNER JOIN reference_values ON reference_values.test = results.test
     INNER JOIN jobs ON jobs.ID = results.job
-    WHERE jobs.dockerTag = (SELECT ID FROM dockerTags WHERE name='snap:{tag}') 
+    WHERE jobs.dockerTag = (SELECT ID FROM dockerTags WHERE name='{tag}') 
         AND results.result = (SELECT ID FROM resultTags WHERE tag='SUCCESS')
         AND (jobs.testScope = 'DAILY' OR jobs.testScope = 'WEEKLY') 
     GROUP BY jobs.ID
@@ -340,7 +340,7 @@ async def get_branch_field_history(tag, field):
     FROM results
     INNER JOIN reference_values ON reference_values.test = results.test
     INNER JOIN jobs ON jobs.ID = results.job
-    WHERE jobs.dockerTag = (SELECT ID FROM dockerTags WHERE name='snap:{tag}') 
+    WHERE jobs.dockerTag = (SELECT ID FROM dockerTags WHERE name='{tag}') 
         AND results.result = (SELECT ID FROM resultTags WHERE tag='SUCCESS')
     GROUP BY jobs.ID
     ORDER BY jobs.timestamp_start DESC;

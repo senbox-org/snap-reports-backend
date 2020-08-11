@@ -174,7 +174,7 @@ async def get_test_list(cursor=None, branch=None):
     query = "SELECT test FROM results WHERE"
     if branch:
         query += f""" job IN (SELECT ID FROM jobs WHERE dockerTag = (
-            SELECT ID FROM dockerTags WHERE name = 'snap:{branch}'
+            SELECT ID FROM dockerTags WHERE name = '{branch}'
         ))"""
     query += " GROUP BY test"
     if cursor:
@@ -191,7 +191,7 @@ async def get_tests(branch=None):
     """
     if branch:
         query += f""" job IN (SELECT ID FROM jobs WHERE dockerTag = (
-            SELECT ID FROM dockerTags WHERE name = 'snap:{branch}'
+            SELECT ID FROM dockerTags WHERE name = '{branch}'
         ))"""
     query += ") ORDER BY ID"
     return await DB.fetchall(query)
