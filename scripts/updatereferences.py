@@ -16,7 +16,7 @@ WHERE
         (SELECT ID FROM resultTags WHERE tag = "SUCCESS")
     AND job IN
         (SELECT ID FROM jobs WHERE dockerTag =
-            (SELECT ID FROM dockerTags WHERE name = "snap:ref7"));
+            (SELECT ID FROM dockerTags WHERE name = "snap:8.0.0-RC2"));
 """
 
 CLEAR_REFRENCES = """
