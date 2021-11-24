@@ -28,15 +28,17 @@ DELETE FROM reference_values;
 def updateRefQuery(ref_tag):
     query = """
     INSERT INTO reference_values
-        (test, referenceTag, updated, duration, cpu_time, cpu_usage_avg,
+        (ID,test, referenceTag, updated, duration, cpu_time, cpu_usage_avg,
         cpu_usage_max, memory_avg, memory_max, io_write, io_read, threads_avg,
         threads_max, raw_data)
     VALUES
-        (:test, (SELECT ID FROM dockerTags WHERE name = "snap:"""+ref_tag+""""), :updated,
-        :duration, :cpu_time, :cpu_usage_avg, :cpu_usage_max, :memory_avg,
-        :memory_max, :io_write, :io_read, :threads_avg, :threads_max, "");
+        (%s,%s, (SELECT ID FROM dockerTags WHERE name = "snap:"""+ref_tag+""""), %s,
+        %s, %s, %s, %s, %s,
+        %s, %s, %s, %s, %s, "");
     """
     return query
+
+
 
 KEYS = ["duration", "cpu_time", "cpu_usage_avg", "cpu_usage_max", "memory_avg",
     "memory_max", "io_read", "io_write", "threads_avg", "threads_max"]
@@ -84,15 +86,23 @@ def __sum_tests__(a, b):
     return c
 
 def __update_reference__(db, tests, ref_tag):
-    db.execute(CLEAR_REFRENCES)
     cursor = db.cursor()
+    # cursor.execute(CLEAR_REFRENCES)
     updated = str(dt.datetime.now())
-
+    # db.commit()
+    #(test, (SELECT ID FROM dockerTags WHERE name = "snap:"""+ref_tag+""""), updated,
+        # duration, cpu_time, cpu_usage_avg, cpu_usage_max, memory_avg,
+        # memory_max, io_write, io_read, threads_avg, threads_max, "")
+    cursor.execute("""SELECT * FROM referenceTags;""")
+    uid = cursor.fetchone()['ID']
+    print(uid)
     for i, test_id in enumerate(tests):
         print(f'\r{i+1:>3}/{len(tests)}', end='')
         test = tests[test_id]
         test['updated'] = updated
-        cursor.execute(updateRefQuery(ref_tag), test)
+        print(test)
+        cursor.execute(updateRefQuery(ref_tag), (uid,test['test'],test['updated'],test['duration'],test['cpu_time'],test['cpu_usage_avg'],test['cpu_usage_max'],
+                        test['memory_avg'],test['memory_max'],test['io_write'],test['io_read'],test['threads_avg'],test['threads_max']))
         db.commit()
     cursor.close()
     print()
@@ -101,7 +111,6 @@ def __update_reference__(db, tests, ref_tag):
 if __name__ == "__main__":
     DB_INFO, REF_TAG = __args__()
     print("Update with ref: "+REF_TAG)
-
     DB = pymysql.connect(
         host=DB_INFO.host,
         port=int(DB_INFO.port),
@@ -110,9 +119,23 @@ if __name__ == "__main__":
         db=DB_INFO.db_name,
         cursorclass=pymysql.cursors.DictCursor
     )
-    print('MySQL DB connected')
     cursor = DB.cursor()
-    rows = cursor.execute(selectQuery(REF_TAG))
+
+    # cursor.execute("""INSERT INTO referenceTags (ID,tag) VALUES ((SELECT ID FROM dockerTags WHERE name = "snap:8.0.0-RC2"),"8.0.0-RC2");""")
+    # print('MySQL DB connected')
+    # DB.commit()
+    cursor.execute("""SELECT * FROM referenceTags;""")
+    rows = cursor.fetchall()
+    print(rows)
+
+    cursor.execute("""SELECT * FROM reference_values;""")
+    rows = cursor.fetchall()
+    for row in rows:
+        print(row)
+    # print(rows)
+    # cursor = DB.cursor()
+    nb_rows = cursor.execute(selectQuery(REF_TAG))
+    rows = cursor.fetchall()
     tests = {}
     tests_counter = {}
     for row in rows:
@@ -126,4 +149,5 @@ if __name__ == "__main__":
     for test_id in tests:
         for key in KEYS:
             tests[test_id][key] /= tests_counter[test_id]
-    __update_reference__(DB, tests, REF_TAG)
+    cursor.close()
+    # __update_reference__(DB, tests, REF_TAG)
