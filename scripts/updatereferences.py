@@ -5,44 +5,6 @@ import pymysql
 import datetime as dt
 import sys
 from collections import namedtuple
-
-def selectQuery(ref_tag):
-    query = """
-    SELECT
-        test, duration, cpu_time, cpu_usage_avg, cpu_usage_max,
-        memory_avg, memory_max, io_write, io_read, threads_avg, threads_max
-    FROM results
-    WHERE
-        result =
-            (SELECT ID FROM resultTags WHERE tag = "SUCCESS")
-        AND job IN
-            (SELECT ID FROM jobs WHERE dockerTag =
-                (SELECT ID FROM dockerTags WHERE name = "snap:"""+ref_tag+""""));
-    """
-    return query
-
-CLEAR_REFRENCES = """
-DELETE FROM reference_values;
-"""
-
-def updateRefQuery(ref_tag):
-    query = """
-    INSERT INTO reference_values
-        (ID,test, referenceTag, updated, duration, cpu_time, cpu_usage_avg,
-        cpu_usage_max, memory_avg, memory_max, io_write, io_read, threads_avg,
-        threads_max, raw_data)
-    VALUES
-        (%s,%s, (SELECT ID FROM dockerTags WHERE name = "snap:"""+ref_tag+""""), %s,
-        %s, %s, %s, %s, %s,
-        %s, %s, %s, %s, %s, "");
-    """
-    return query
-
-
-
-KEYS = ["duration", "cpu_time", "cpu_usage_avg", "cpu_usage_max", "memory_avg",
-    "memory_max", "io_read", "io_write", "threads_avg", "threads_max"]
-
 def __help__():
     print('Helper to update reference values to the snap-reports mysql database with specific ref branch.')
     print('update_ref.py DB_USER:DB_PASSWORD@DB_HOST:DB_PORT/DB_NAME ref_tag')
@@ -85,23 +47,57 @@ def __sum_tests__(a, b):
         c[key] = a[key] + b[key]
     return c
 
+def selectQuery(ref_tag):
+    query = """
+    SELECT
+        test, duration, cpu_time, cpu_usage_avg, cpu_usage_max,
+        memory_avg, memory_max, io_write, io_read, threads_avg, threads_max
+    FROM results
+    WHERE
+        job IN
+            (SELECT MAX(id) FROM jobs WHERE dockerTag =
+                (SELECT ID FROM dockerTags WHERE name = "snap:"""+ref_tag+""""));
+    """
+    return query
+
+CLEAR_REFRENCES = """
+DELETE FROM reference_values;
+"""
+
+KEYS = ["duration", "cpu_time", "cpu_usage_avg", "cpu_usage_max", "memory_avg",
+    "memory_max", "io_read", "io_write", "threads_avg", "threads_max"]
+
+def updateRefQuery(ref_tag):
+    query = """
+    INSERT INTO reference_values
+        (ID,test, referenceTag, updated, duration, cpu_time, cpu_usage_avg,
+        cpu_usage_max, memory_avg, memory_max, io_write, io_read, threads_avg,
+        threads_max, raw_data)
+    VALUES
+        (%s,%s, (SELECT ID FROM dockerTags WHERE name = "snap:"""+ref_tag+""""), %s,
+        %s, %s, %s, %s, %s,
+        %s, %s, %s, %s, %s, b'');
+    """
+    return query
+
+
 def __update_reference__(db, tests, ref_tag):
     cursor = db.cursor()
-    # cursor.execute(CLEAR_REFRENCES)
+    cursor.execute(CLEAR_REFRENCES)
     updated = str(dt.datetime.now())
-    # db.commit()
+    db.commit()
     #(test, (SELECT ID FROM dockerTags WHERE name = "snap:"""+ref_tag+""""), updated,
         # duration, cpu_time, cpu_usage_avg, cpu_usage_max, memory_avg,
         # memory_max, io_write, io_read, threads_avg, threads_max, "")
-    cursor.execute("""SELECT * FROM referenceTags;""")
+    cursor.execute("""SELECT * FROM referenceTags""")
     uid = cursor.fetchone()['ID']
-    print(uid)
+    print('uid: ',uid)
     for i, test_id in enumerate(tests):
         print(f'\r{i+1:>3}/{len(tests)}', end='')
         test = tests[test_id]
         test['updated'] = updated
-        print(test)
-        cursor.execute(updateRefQuery(ref_tag), (uid,test['test'],test['updated'],test['duration'],test['cpu_time'],test['cpu_usage_avg'],test['cpu_usage_max'],
+        print(test,";",updated)
+        cursor.execute(updateRefQuery(ref_tag), (i,test['test'],test['updated'],test['duration'],test['cpu_time'],test['cpu_usage_avg'],test['cpu_usage_max'],
                         test['memory_avg'],test['memory_max'],test['io_write'],test['io_read'],test['threads_avg'],test['threads_max']))
         db.commit()
     cursor.close()
@@ -121,19 +117,17 @@ if __name__ == "__main__":
     )
     cursor = DB.cursor()
 
-    # cursor.execute("""INSERT INTO referenceTags (ID,tag) VALUES ((SELECT ID FROM dockerTags WHERE name = "snap:8.0.0-RC2"),"8.0.0-RC2");""")
-    # print('MySQL DB connected')
-    # DB.commit()
     cursor.execute("""SELECT * FROM referenceTags;""")
     rows = cursor.fetchall()
     print(rows)
-
-    cursor.execute("""SELECT * FROM reference_values;""")
-    rows = cursor.fetchall()
-    for row in rows:
-        print(row)
-    # print(rows)
-    # cursor = DB.cursor()
+    cursor.execute("""SELECT * FROM dockerTags;""")
+    rows2 = cursor.fetchall()
+    print(rows2)
+    ##remove the reference_values and update the referenceTag with a new ID ref
+    # cursor.execute(CLEAR_REFRENCES)
+    # DB.commit()
+    # cursor.execute("""UPDATE referenceTags SET ID = '29';""")
+    # DB.commit()
     nb_rows = cursor.execute(selectQuery(REF_TAG))
     rows = cursor.fetchall()
     tests = {}
@@ -150,4 +144,5 @@ if __name__ == "__main__":
         for key in KEYS:
             tests[test_id][key] /= tests_counter[test_id]
     cursor.close()
-    # __update_reference__(DB, tests, REF_TAG)
+    print(len(tests))
+    __update_reference__(DB, tests, REF_TAG)
