@@ -52,8 +52,21 @@ def __divide_test__(a,N):
         'test': a['test'],
     }
     for key in KEYS:
-        c[key] = a[key]/N
+        c[key] = round(a[key]/N)
     return c
+
+def selectLastQuery(ref_tag):
+    query = """
+    SELECT
+        test, duration, cpu_time, cpu_usage_avg, cpu_usage_max,
+        memory_avg, memory_max, io_write, io_read, threads_avg, threads_max
+    FROM results
+    WHERE
+        job IN
+            (SELECT MAX(id) FROM jobs WHERE dockerTag =
+                (SELECT ID FROM dockerTags WHERE name = "snap:"""+ref_tag+""""));
+    """
+    return query
 
 def selectQuery(ref_tag):
     query = """
@@ -70,6 +83,9 @@ def selectQuery(ref_tag):
 
 CLEAR_REFRENCES = """
 DELETE FROM reference_values;
+"""
+CLEAR_REFRENCE_TAG = """
+DELETE FROM referenceTags;
 """
 
 KEYS = ["duration", "cpu_time", "cpu_usage_avg", "cpu_usage_max", "memory_avg",
@@ -88,18 +104,27 @@ def updateRefQuery(ref_tag):
     """
     return query
 
+def updateRegistryRef():
+    query = """
+        INSERT INTO referenceTags (ID, tag) VALUES (34,'default')
+    """
+    return query
 
 def __update_reference__(db, tests, ref_tag):
     cursor = db.cursor()
     cursor.execute(CLEAR_REFRENCES)
     updated = str(dt.datetime.now())
     db.commit()
+    cursor.execute(CLEAR_REFRENCE_TAG)
+    db.commit()
     #(test, (SELECT ID FROM dockerTags WHERE name = "snap:"""+ref_tag+""""), updated,
         # duration, cpu_time, cpu_usage_avg, cpu_usage_max, memory_avg,
         # memory_max, io_write, io_read, threads_avg, threads_max, "")
-    cursor.execute("""SELECT * FROM referenceTags""")
-    uid = cursor.fetchone()['ID']
-    print('uid: ',uid)
+    # cursor.execute("""SELECT * FROM referenceTags""")
+    # uid = cursor.fetchone()['ID']
+    # print('uid: ',uid)
+    cursor.execute(updateRegistryRef())
+    db.commit()
     for i, test_id in enumerate(tests):
         print(f'\r{i+1:>3}/{len(tests)}', end='')
         test = tests[test_id]
@@ -114,7 +139,7 @@ def __update_reference__(db, tests, ref_tag):
 
 if __name__ == "__main__":
     DB_INFO, REF_TAG = __args__()
-    print("Update with ref: "+REF_TAG)
+    # print("Update with ref: "+REF_TAG)
     DB = pymysql.connect(
         host=DB_INFO.host,
         port=int(DB_INFO.port),
@@ -127,10 +152,10 @@ if __name__ == "__main__":
 
     cursor.execute("""SELECT * FROM referenceTags;""")
     rows = cursor.fetchall()
-    print(rows)
+    # print(rows)
     cursor.execute("""SELECT * FROM dockerTags;""")
     rows2 = cursor.fetchall()
-    print(rows2)
+    # print(rows2)
     ##remove the reference_values and update the referenceTag with a new ID ref
     # cursor.execute(CLEAR_REFRENCES)
     # DB.commit()
@@ -138,23 +163,37 @@ if __name__ == "__main__":
     # DB.commit()
     nb_rows = cursor.execute(selectQuery(REF_TAG))
     rows = cursor.fetchall()
+    cursor.execute(selectLastQuery(REF_TAG))
+    rows2 = cursor.fetchall()
     tests = {}
+    tests3 = {}
+    tests2 = {}
     tests_counter = {}
-    print(len(rows))
+    # print(len(rows))
     IDs=[]
+    for row in rows2:
+        test_id = row['test']
+        if test_id not in tests3:
+            tests3[test_id] = dict(row)
+            
     for row in rows:
         test_id = row['test']
         if test_id not in tests:
             tests[test_id] = dict(row)
+            tests2[test_id] = [dict(row)]
             tests_counter[test_id] = 1
             IDs.append(test_id)
         else:
             tests[test_id] = __sum_tests__(tests[test_id], row)
+            tests2[test_id].append(dict(row))
             tests_counter[test_id] += 1
     IDs= sorted(IDs)
     for test_id in IDs:
         tests[test_id] = __divide_test__(tests[test_id],tests_counter[test_id])
-        for key in KEYS:
-            tests[test_id][key] /= tests_counter[test_id]
+        if(test_id in tests3):
+            print(test_id,":",tests[test_id]['duration'],":",tests3[test_id]['duration'],":",tests3[test_id]['duration']-tests[test_id]['duration'])
+        # for key in KEYS:
+            # tests[test_id][key] /= tests_counter[test_id]
     cursor.close()
     __update_reference__(DB, tests, REF_TAG)
+    # print(tests2)

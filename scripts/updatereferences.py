@@ -63,6 +63,9 @@ def selectQuery(ref_tag):
 CLEAR_REFRENCES = """
 DELETE FROM reference_values;
 """
+CLEAR_REFRENCE_TAG = """
+DELETE FROM referenceTags;
+"""
 
 KEYS = ["duration", "cpu_time", "cpu_usage_avg", "cpu_usage_max", "memory_avg",
     "memory_max", "io_read", "io_write", "threads_avg", "threads_max"]
@@ -80,18 +83,28 @@ def updateRefQuery(ref_tag):
     """
     return query
 
+def updateRegistryRef():
+    query = """
+        INSERT INTO referenceTags (ID, tag) VALUES (34,'default')
+    """
+    return query
 
 def __update_reference__(db, tests, ref_tag):
     cursor = db.cursor()
     cursor.execute(CLEAR_REFRENCES)
     updated = str(dt.datetime.now())
     db.commit()
+    cursor.execute(CLEAR_REFRENCE_TAG)
+    db.commit()
+    
     #(test, (SELECT ID FROM dockerTags WHERE name = "snap:"""+ref_tag+""""), updated,
         # duration, cpu_time, cpu_usage_avg, cpu_usage_max, memory_avg,
         # memory_max, io_write, io_read, threads_avg, threads_max, "")
-    cursor.execute("""SELECT * FROM referenceTags""")
-    uid = cursor.fetchone()['ID']
-    print('uid: ',uid)
+    # cursor.execute("""SELECT * FROM referenceTags""")
+    # uid = cursor.fetchone()['ID']
+    # print('uid: ',uid)
+    cursor.execute(updateRegistryRef())
+    db.commit()
     for i, test_id in enumerate(tests):
         print(f'\r{i+1:>3}/{len(tests)}', end='')
         test = tests[test_id]
@@ -106,7 +119,7 @@ def __update_reference__(db, tests, ref_tag):
 
 if __name__ == "__main__":
     DB_INFO, REF_TAG = __args__()
-    print("Update with ref: "+REF_TAG)
+    # print("Update with ref: "+REF_TAG)
     DB = pymysql.connect(
         host=DB_INFO.host,
         port=int(DB_INFO.port),
@@ -119,10 +132,10 @@ if __name__ == "__main__":
 
     cursor.execute("""SELECT * FROM referenceTags;""")
     rows = cursor.fetchall()
-    print(rows)
+    # print(rows)
     cursor.execute("""SELECT * FROM dockerTags;""")
     rows2 = cursor.fetchall()
-    print(rows2)
+    # print(rows2)
     ##remove the reference_values and update the referenceTag with a new ID ref
     # cursor.execute(CLEAR_REFRENCES)
     # DB.commit()
@@ -132,17 +145,21 @@ if __name__ == "__main__":
     rows = cursor.fetchall()
     tests = {}
     tests_counter = {}
+    IDs=[]
     for row in rows:
         test_id = row['test']
         if test_id not in tests:
             tests[test_id] = dict(row)
             tests_counter[test_id] = 1
+            IDs.append(test_id)
         else:
             tests[test_id] = __sum_tests__(tests[test_id], row)
             tests_counter[test_id] += 1
-    for test_id in tests:
+    IDs= sorted(IDs)
+    for test_id in IDs:
+        print(test_id,":",tests[test_id]['duration'])
         for key in KEYS:
             tests[test_id][key] /= tests_counter[test_id]
     cursor.close()
-    print(len(tests))
-    __update_reference__(DB, tests, REF_TAG)
+    # print(len(tests))
+    # __update_reference__(DB, tests, REF_TAG)
