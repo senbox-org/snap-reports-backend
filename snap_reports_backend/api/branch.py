@@ -382,7 +382,8 @@ async def get_branch_comparison(request, tag_a, tag_b, field):
         tests.ID AS test_ID, 
         tests.name AS test_name, 
         COUNT(results.ID) AS num_exec, 
-        AVG(results.{field.lower()}) AS field
+        AVG(results.{field.lower()}) AS field,
+        tests.author AS author
     FROM results 
     JOIN (
         SELECT ID from jobs where 
@@ -418,7 +419,8 @@ async def get_branch_comparison(request, tag_a, tag_b, field):
             'br_a_avg': el_a['field'],
             'br_b_avg': el_b['field'],
             'diff_abs': el_a['field'] - el_b['field'],
-            'diff_rel': (el_a['field'] - el_b['field']) / el_b['field'] * 100
+            'diff_rel': (el_a['field'] - el_b['field']) / el_b['field'] * 100,
+            'author':el_b['author']
         }
         results.append(val)
     return json(results)
