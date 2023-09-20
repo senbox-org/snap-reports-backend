@@ -1,3 +1,6 @@
-DB_MODE = 'SQLITE'
-DB = 'example.db'
-PORT = 9090
+# DB_MODE = 'SQLITE'
+# DB = 'example.db'
+# PORT = 9090
+DB_MODE = 'MYSQL'
+DB = 'snap-report'
+PORT = 3306

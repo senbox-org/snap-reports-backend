@@ -23,4 +23,5 @@ if __name__ == "__main__":
         port=APP.config.PORT,
         workers=4,
         access_log=False,
-        debug=False)
+        debug=False,
+        single_process=True)
