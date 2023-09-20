@@ -1,12 +1,13 @@
 """
 Simple interface for MySQL and SQLite DB.
 """
+import os
+import sys
 import sqlite3
 import asyncio
 import aiomysql
-import time
 import decimal
-
+from dotenv import load_dotenv
 
 class SQLiteInterface:
     """SQLite Interface."""
@@ -162,3 +163,7 @@ def get_interface(mode, name):
         return MySQLInterfce(name)
     print(f'Mode `{mode}` not supported')
     return None
+
+def get_database():
+    load_dotenv(sys.argv[1])
+    return get_interface(os.getenv('DB_MODE'), os.getenv('DB'))

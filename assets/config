@@ -2,5 +2,5 @@
 # DB = 'example.db'
 # PORT = 9090
 DB_MODE = 'MYSQL'
-DB = 'snap-report'
-PORT = 3306
+DB = 'user:password@host:port/snap_reports'
+PORT = 9090

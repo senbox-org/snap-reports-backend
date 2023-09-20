@@ -49,7 +49,7 @@ async def get_test_summary(_, test):
     return await performances.test_summary(test_id)
 
 
-@test.route("/<test>/summary/<tag:string>")
+@test.route("/<test>/summary/<tag:str>")
 async def get_test_summary_by_tag(_, test, tag):
     """Retrieve test performances summary."""
     test_id = await support.get_test_id(test)
@@ -58,7 +58,7 @@ async def get_test_summary_by_tag(_, test, tag):
     return await performances.test_summary(test_id, tag)
 
 
-@test.route("/api/test/<test>/status/<tag:string>")
+@test.route("/api/test/<test>/status/<tag:str>")
 async def get_test_status(_, test, tag):
     """Get status of a test in of a specific branch."""
     test_id = await support.get_test_id(test)
@@ -76,7 +76,7 @@ async def get_test_reference(_, test):
     return await performances.test_reference(test_id)
 
 
-@test.route("/<test>/history/<field:string>/<tag:string>")
+@test.route("/<test>/history/<field:str>/<tag:str>")
 async def get_history(request, test, field, tag):
     """Get history."""
     test_id = await support.get_test_id(test)
@@ -88,7 +88,7 @@ async def get_history(request, test, field, tag):
     return await performances.history(test_id, tag, field, last_n)
 
 
-@test.route("/<test>/moving_average/<field:string>/<tag:string>/<num:int>")
+@test.route("/<test>/moving_average/<field:str>/<tag:str>/<num:int>")
 async def get_history_moving_avg(request, test, field, tag, num):
     """Get history."""
     test_id = await support.get_test_id(test)
@@ -100,14 +100,14 @@ async def get_history_moving_avg(request, test, field, tag, num):
     return await performances.history_ma(test_id, tag, field, num, last_n)
 
 
-@test.route("/author/<name:string>")
+@test.route("/author/<name:str>")
 async def get_test_by_author(_, name):
     """Retrieve list of tests by author."""
     res = await DB.fetchall(f"SELECT * FROM tests where author='{name}' ORDER BY id")
     return json({'tests': res})
 
 
-@test.route("/tag/<name:string>")
+@test.route("/tag/<name:str>")
 async def get_test_by_frequency(_, name):
     """Retrieve list of tests by frequency tag."""
     rows = await DB.fetchall(f"SELECT * FROM tests ORDER BY id")

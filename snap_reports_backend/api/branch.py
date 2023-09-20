@@ -110,7 +110,7 @@ def parse_tag(tag):
     """Function to decode url tag"""
     return tag.replace('%3A', ':')
 
-@branch.route("/<tag:string>/summary")
+@branch.route("/<tag:str>/summary")
 async def get_branch_summary(_, tag):
     """Get branch statistics summary."""
     tag = parse_tag(tag)
@@ -137,7 +137,7 @@ async def get_branch_summary(_, tag):
         return json(res)
 
 
-@branch.route("/<tag:string>/summary/absolute")
+@branch.route("/<tag:str>/summary/absolute")
 async def get_branch_summary_absolute(_, tag):
     """Get branch statistics absolute numbers."""
     tag = parse_tag(tag)
@@ -155,7 +155,7 @@ async def get_branch_summary_absolute(_, tag):
     return json(res)
 
 
-@branch.route("/<tag:string>/history/scheduled/<field:string>")
+@branch.route("/<tag:str>/history/scheduled/<field:str>")
 async def get_branch_schduled_field_history(_, tag, field):
     result = await performances.get_branch_scheduled_field_history(tag, field) 
     if  result is None:
@@ -164,7 +164,7 @@ async def get_branch_schduled_field_history(_, tag, field):
     return json({"date": dates, "value": values})
 
 
-@branch.route("/<tag:string>/history/scheduled/<field:string>/<window:int>")
+@branch.route("/<tag:str>/history/scheduled/<field:str>/<window:int>")
 async def get_branch_scheduled_field_history_ma(_, tag, field, window):
     tag = parse_tag(tag)
     result = await performances.get_branch_scheduled_field_history_moving_average(tag, field, window) 
@@ -174,7 +174,7 @@ async def get_branch_scheduled_field_history_ma(_, tag, field, window):
     return json({"date": dates, "value": values})
 
 
-@branch.route("/<tag:string>/history/<field:string>")
+@branch.route("/<tag:str>/history/<field:str>")
 async def get_branch_field_history(_, tag, field):
     tag = parse_tag(tag)
     result = await performances.get_branch_field_history(tag, field) 
@@ -183,7 +183,7 @@ async def get_branch_field_history(_, tag, field):
     dates, values = result
     return json({"date": dates, "value": values})
 
-@branch.route("/<tag:string>/history/<field:string>/<window:int>")
+@branch.route("/<tag:str>/history/<field:str>/<window:int>")
 async def get_branch_field_history_ma(_, tag, field, window):
     tag = parse_tag(tag)
     result = await performances.get_branch_field_history_moving_average(tag, field, window) 
@@ -228,8 +228,8 @@ async def __details_N__(tag, num):
     return stats
 
 
-@branch.route("/<tag:string>/details/last")
-async def get_branch_details(_, tag):
+@branch.route("/<tag:str>/details/last")
+async def get_branch_details_last(_, tag):
     """Get branch statistics summary."""
     tag = parse_tag(tag)
     query = f"""
@@ -258,18 +258,18 @@ async def get_branch_details(_, tag):
     stats = await DB.fetchall(query)
     return json(stats)
 
-@branch.route("/<tag:string>/details")
-async def get_branch_details(_, tag):
+@branch.route("/<tag:str>/details")
+async def get_branch_details_n(_, tag):
     """Get branch statistics summary."""
     return json({'details': await __details_N__(tag, None)})
 
-@branch.route("/<tag:string>/details/<N:int>")
-async def get_branch_details(_, tag, N):
+@branch.route("/<tag:str>/details/<n:int>")
+async def get_branch_details(_, tag, n):
     """Get branch statistics summary."""
-    return json({'details': await __details_N__(tag, N)})
+    return json({'details': await __details_N__(tag, n)})
 
 
-@branch.route("/<tag:string>/last_job")
+@branch.route("/<tag:str>/last_job")
 async def get_branch_last_job(_, tag):
     """Get last job of a given branch."""
     tag = parse_tag(tag)
@@ -291,7 +291,7 @@ async def get_list(_):
     return json({'branches': rows})
 
 
-@branch.route("/<tag:string>/njobs")
+@branch.route("/<tag:str>/njobs")
 async def get_branch_njobs(_, tag):
     """Get number of jobs executed of a given branch."""
     tag = parse_tag(tag)
@@ -306,7 +306,7 @@ async def get_branch_njobs(_, tag):
     return json({'njobs': row['COUNT(ID)']})
 
 
-@branch.route("/compare/<tag_a:string>/<tag_b:string>/<field:string>")
+@branch.route("/compare/<tag_a:str>/<tag_b:str>/<field:str>")
 async def get_branch_comparison(request, tag_a, tag_b, field):
     """
     Compare a specific field of two different branches
