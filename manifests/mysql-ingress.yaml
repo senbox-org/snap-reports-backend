@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  labels:
+    app: snap-report-backend-mysql
+  name: mysql
+  namespace: snap-report
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: mysql.snap-ci.ovh
+    http:
+      paths:
+      - backend:
+          service:
+            name: mysql-service
+            port:
+              name: mysql-service
+        path: /
+        pathType: Prefix
+  tls:
+  - hosts:
+    - mysql.snap-ci.ovh
+    secretName: mysql.snap-ci.ovh-tls
