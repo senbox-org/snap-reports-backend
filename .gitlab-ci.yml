@@ -1,9 +1,49 @@
-stages:
-  - test
+include:
+  - project: 'to-be-continuous/docker'
+    ref: '5.1.0'
+    file: '/templates/gitlab-ci-docker.yml'
 
-test:
-  stage: test
+variables:
+  DOCKER_REGISTRY_MIRROR: docker.snap-ci.ovh
+  DOCKER_REGISTRY_USER: $NEXUS_USER
+  DOCKER_REGISTRY_PASSWORD: $NEXUS_PASSWORD
+  DOCKER_SNAPSHOT_IMAGE: "$NEXUS_URL/$CI_PROJECT_NAME:$CI_COMMIT_REF_NAME"
+  DOCKER_RELEASE_IMAGE: "$NEXUS_URL/$CI_PROJECT_NAME:latest"
+  DOCKER_TRIVY_ARGS: "${DOCKER_TRIVY_ARGS} --debug --timeout 15m"
+  DOCKER_HADOLINT_ARGS: --failure-threshold error
+  DOCKER_PROD_PUBLISH_STRATEGY: auto
+
+docker-trivy:
+  allow_failure: true
+
+# Report on Github cf https://ecp-ci.gitlab.io/docs/guides/build-status-gitlab.html
+.report-status:
+  image: curlimages/curl
+  variables:
+    URL: "https://api.github.com/repos/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/statuses/${CI_COMMIT_SHA}"
+    STATUS_NAME: snap-ci
   script:
-  - apt-get update -qy
-  - apt-get install -y python3-dev python3-pip
-  - pip3 install -r requirements.txt
+    # For complete details on the GitHub API please see:
+    # https://docs.github.com/en/rest/commits/statuses?apiVersion=2022-11-28#create-a-commit-status
+    - |-
+      curl -X POST $URL -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GITHUB_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" -d '{"state": "'$CI_JOB_NAME'", "context": "'$STATUS_NAME'", "target_url": "'$CI_PIPELINE_URL'", "description": "Build docker image"}'
+  environment:
+    name: reporting-github
+  dependencies: []
+
+pending:
+  stage: .pre
+  extends:
+    - .report-status
+
+success:
+  stage: .post
+  extends:
+    - .report-status
+
+failure:
+  stage: .post
+  extends:
+    - .report-status
+  rules:
+    - when: on_failure

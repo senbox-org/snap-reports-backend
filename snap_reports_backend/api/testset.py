@@ -17,7 +17,7 @@ async def testset_list(_):
     return json({"testset": res})
 
 
-@testset.route("/<name:string>")
+@testset.route("/<name:str>")
 async def testset_test_list(_, name):
     """Retrieve list of tests of a given testset."""
     rows = await DB.fetchall(

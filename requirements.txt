@@ -3,3 +3,4 @@ sanic-cors
 cryptography
 aiomysql
 uvloop
+python-dotenv

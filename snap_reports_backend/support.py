@@ -1,9 +1,7 @@
 """Support functions and utilities."""
 import sys
-import os
-from sanic import Sanic
 from sanic.response import text, json
-from sanic_cors import CORS
+
 import dbfactory
 import uvloop
 import asyncio
@@ -16,18 +14,10 @@ if len(sys.argv) < 2:
     print("Missing configuration file")
     sys.exit(1)
 
-APP = Sanic('SNAP Reports')
-CORS(APP)
-CFG_FILE = sys.argv[1]
-
-if os.path.exists(CFG_FILE+'.local'):
-    CFG_FILE += '.local'
-
-APP.config.from_pyfile(CFG_FILE)
-
-DB = dbfactory.get_interface(APP.config.DB_MODE, APP.config.DB)
+DB = dbfactory.get_database()
 
 if not DB:
+    print('db was not found - EXIT')
     sys.exit(1)
 
 TAGS = {}

@@ -40,7 +40,7 @@ async def job_list(request):
     return json(rows)
 
 
-@job.route("/tag/<tag:string>")
+@job.route("/tag/<tag:str>")
 async def job_list_by_tag(_, tag):
     """
     Retrieve list of job of a given frequency tag.

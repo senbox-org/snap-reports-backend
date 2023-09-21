@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "mysql-deployment"
+  labels:
+    select: snap-report-backend-mysql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: snap-report-backend-mysql
+  template:
+    metadata:
+      name: prod
+      labels:
+          region: in
+          prod: frontend
+    spec: 
+      containers:
+      - name: snap-report-backend-mysql
+        image: mysql:5.7
+        resources:
+          requests:
+            cpu: "100m"
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: snap-report-backend-mysql-root-password
+              key: root_password
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: snap-report-backend-mysql-user-password
+              key:  user_password
+        - name: MYSQL_DATABASE
+          value: snap-report
+        - name: MYSQL_USER
+          value: snap
