@@ -6,7 +6,7 @@ metadata:
   labels:
     app: snap-report-backend-app
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: snap-report-backend-app
@@ -17,9 +17,33 @@ spec:
     spec:
       containers:
       - name: snap-report-backend-app-deployment
-        image: snap-report-backend:latest
+        image: docker-hosted.snap-ci.ovh/snap-reports-backend:latest
         resources:
+          limits:
+            cpu: 2000m
+            memory: 4Gi
           requests:
             cpu: "100m"
         ports:
         - containerPort: 9090
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: snap-report-backend-mysql-connection
+              key: MYSQL_ROOT_PASSWORD
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: snap-report-backend-mysql-connection
+              key:  MYSQL_PASSWORD
+        - name: MYSQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: snap-report-backend-mysql-connection
+              key:  MYSQL_DATABASE
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: snap-report-backend-mysql-connection
+              key:  MYSQL_USER

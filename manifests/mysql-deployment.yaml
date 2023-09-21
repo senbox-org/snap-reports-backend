@@ -1,9 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: "mysql-deployment"
+  name: mysql
+  namespace: snap-report
   labels:
-    select: snap-report-backend-mysql
+    app: snap-report-backend-mysql
 spec:
   replicas: 1
   selector:
@@ -11,29 +12,57 @@ spec:
       app: snap-report-backend-mysql
   template:
     metadata:
-      name: prod
-      labels:
-          region: in
-          prod: frontend
+      labels: 
+        app: snap-report-backend-mysql
     spec: 
       containers:
       - name: snap-report-backend-mysql
         image: mysql:5.7
+        livenessProbe:
+          tcpSocket:
+            port: 3306
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 2
+          timeoutSeconds: 3
+        ports:
+          - containerPort: 3306
         resources:
+          limits:
+            cpu: 2000m
+            memory: 4Gi
           requests:
-            cpu: "100m"
+            cpu: 300m
+            memory: 400Mi
+        volumeMounts:
+          - name: mysql-storage
+            mountPath: "/var/lib/mysql"
+            subPath: "mysql" 
+          # - name: mysql
+          #   mountPath: /etc/mysql/conf.d
         env:
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: snap-report-backend-mysql-root-password
-              key: root_password
+              name: snap-report-backend-mysql-connection
+              key: MYSQL_ROOT_PASSWORD
         - name: MYSQL_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: snap-report-backend-mysql-user-password
-              key:  user_password
+              name: snap-report-backend-mysql-connection
+              key:  MYSQL_PASSWORD
         - name: MYSQL_DATABASE
-          value: snap-report
+          valueFrom:
+            secretKeyRef:
+              name: snap-report-backend-mysql-connection
+              key:  MYSQL_DATABASE
         - name: MYSQL_USER
-          value: snap
+          valueFrom:
+            secretKeyRef:
+              name: snap-report-backend-mysql-connection
+              key:  MYSQL_USER
+      volumes:
+        - name: mysql-storage
+          persistentVolumeClaim:
+            claimName: mysql-storage
