@@ -85,7 +85,6 @@ def v2v(x):
 class MySQLInterfce:
     """MySQL interface."""
     def __init__(self, dbname):
-        print('Init database ', dbname)
         self.user, self.password = dbname.split('@')[0].split(':')
         self.db_name = dbname.split('@')[1].split('/')[1]
         self.host, self.port = dbname.split('@')[1].split('/')[0].split(':')
