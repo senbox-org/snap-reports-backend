@@ -14,9 +14,10 @@ def create_app() -> Sanic:
     if os.getenv('MYSQL_DATABASE') != None:
         db_settings = {
             'DB_MODE': 'MYSQL',
-            'DB': os.getenv('MYSQL_USER') + ':' + os.getenv('MYSQL_PASSWORD') + '@0.0.0.0:3306/' + os.getenv('MYSQL_DATABASE'),
+            'DB': os.getenv('MYSQL_USER') + ':' + os.getenv('MYSQL_PASSWORD') + '@mysql.snap-ci.ovh:3306/' + os.getenv('MYSQL_DATABASE'),
             'PORT': 9090
         }
+        print('Init app for production ', db_settings)
         app.config.update(db_settings)
         return app
 

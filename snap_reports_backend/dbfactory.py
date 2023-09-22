@@ -85,6 +85,7 @@ def v2v(x):
 class MySQLInterfce:
     """MySQL interface."""
     def __init__(self, dbname):
+        print('Init database ', dbname)
         self.user, self.password = dbname.split('@')[0].split(':')
         self.db_name = dbname.split('@')[1].split('/')[1]
         self.host, self.port = dbname.split('@')[1].split('/')[0].split(':')
@@ -165,5 +166,8 @@ def get_interface(mode, name):
     return None
 
 def get_database():
-    load_dotenv(sys.argv[1])
-    return get_interface(os.getenv('DB_MODE'), os.getenv('DB'))
+    if os.getenv('MYSQL_DATABASE') == None:
+        load_dotenv(sys.argv[1])
+        return get_interface(os.getenv('DB_MODE'), os.getenv('DB'))
+    else:
+        return get_interface('MYSQL', os.getenv('MYSQL_USER') + ':' + os.getenv('MYSQL_PASSWORD') + '@mysql.snap-ci.ovh:3306/' + os.getenv('MYSQL_DATABASE'))
