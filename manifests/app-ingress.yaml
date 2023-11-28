@@ -4,23 +4,23 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
   labels:
-    app: snap-report-mysql
-  name: mysql
+    app: snap-report-backend
+  name: snap-report-backend
   namespace: snap-report
 spec:
   ingressClassName: nginx
   rules:
-  - host: mysql.snap-ci.ovh
+  - host: reports-api.snap-ci.ovh
     http:
       paths:
       - backend:
           service:
-            name: snap-report-mysql
+            name: snap-report-backend
             port:
-              number: 3306
+              name: http
         path: /
         pathType: Prefix
   tls:
   - hosts:
-    - mysql.snap-ci.ovh
-    secretName: mysql.snap-ci.ovh-tls
+    - reports-api.snap-ci.ovh
+    secretName: reports-api.snap-ci.ovh-tls
