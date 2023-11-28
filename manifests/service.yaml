@@ -2,14 +2,16 @@
 apiVersion: v1
 kind: Service
 metadata:
- name: snap-report-backend-service
+ name: snap-report-backend
+ namespace: snap-report
 spec:
  selector:
    # Selector for Pods
    app: snap-report-backend-app
  ports:
    # Port Map
- - port: 80
-   targetPort: 9090
-   protocol: TCP
- type: LoadBalancer
+  - name: http
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+ type: NodePort

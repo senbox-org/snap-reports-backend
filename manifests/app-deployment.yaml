@@ -15,6 +15,8 @@ spec:
       labels:
         app: snap-report-backend-app
     spec:
+      nodeSelector:
+        nodepool: infrastructure
       containers:
       - name: snap-report-backend-app-deployment
         image: docker-hosted.snap-ci.ovh/snap-reports-backend:latest

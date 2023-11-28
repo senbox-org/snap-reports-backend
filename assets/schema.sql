@@ -37,6 +37,15 @@ CREATE TABLE tests (
   PRIMARY KEY(ID)
 );
 
+CREATE TABLE test_graph (
+  `ID` int NOT NULL AUTO_INCREMENT,
+  `test` int NOT NULL,
+  `graph` text NOT NULL,
+  PRIMARY KEY (`ID`),
+  KEY `fk_test_idx` (`test`),
+  CONSTRAINT `fk_test` FOREIGN KEY (`test`) REFERENCES `tests` (`ID`)
+);
+
 CREATE TABLE jobs (
   ID  INTEGER AUTO_INCREMENT,
   branch  VARCHAR(64) NOT NULL,
@@ -47,7 +56,7 @@ CREATE TABLE jobs (
   timestamp_end  DATETIME NOT NULL,
   result  INTEGER NOT NULL,
   CONSTRAINT UQ_job UNIQUE(branch,jobnum),
-  FOREIGN KEY(result) REFERENCES resultTags(ID),
+  FOREIGN KEY(result) REFERENCES resultTags(ID) ON DELETE CASCADE,
   FOREIGN KEY(dockerTag) REFERENCES dockerTags(ID),
   PRIMARY KEY(ID)
 );
@@ -98,3 +107,7 @@ CREATE TABLE results (
   PRIMARY KEY(ID),
   FOREIGN KEY(test) REFERENCES tests(ID)
 );
+
+-- Cleanup needed on DB restore
+-- DELETE results FROM results INNER JOIN jobs ON results.job = jobs.ID WHERE jobs.branch NOT IN ('8.0.0.', '9.0.0', '8.0.0-reference');
+-- DELETE FROM jobs WHERE jobs.branch NOT IN ('8.0.0.', '9.0.0', '8.0.0-reference');
