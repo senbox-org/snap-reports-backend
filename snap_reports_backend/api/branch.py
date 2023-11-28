@@ -374,7 +374,8 @@ async def get_branch_comparison(request, tag_a, tag_b, field):
         tests.ID in ({intersect_query})
     {q_filter}
     GROUP BY tests.ID
-    ORDER BY tests.ID ASC;
+    ORDER BY tests.ID ASC
+    LIMIT 5;
     """
 
     query_b = f"""
@@ -400,7 +401,8 @@ async def get_branch_comparison(request, tag_a, tag_b, field):
         tests.ID in ({intersect_query})
     {q_filter}
     GROUP BY tests.ID
-    ORDER BY tests.ID ASC;
+    ORDER BY tests.ID ASC
+    LIMIT 5;
     """
     stats_a = await DB.fetchall(query_a)
     stats_b = await DB.fetchall(query_b)
