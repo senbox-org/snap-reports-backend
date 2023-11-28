@@ -362,7 +362,7 @@ async def get_branch_comparison(request, tag_a, tag_b, field):
         SELECT ID from jobs where 
         dockerTag = 
             (SELECT ID from dockerTags WHERE name='{tag_a}')
-        ORDER BY ID DESC
+        ORDER BY ID DESC LIMIT 5
     ) jobs on results.job In (jobs.ID)
     INNER JOIN tests ON
         results.test = tests.ID
@@ -388,7 +388,7 @@ async def get_branch_comparison(request, tag_a, tag_b, field):
         SELECT ID from jobs where 
         dockerTag = 
             (SELECT ID from dockerTags WHERE name='{tag_b}')
-        ORDER BY ID DESC
+        ORDER BY ID DESC LIMIT 5
     ) jobs on results.job In (jobs.ID)
     INNER JOIN tests ON
         results.test = tests.ID
