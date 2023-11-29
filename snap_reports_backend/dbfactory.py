@@ -129,14 +129,12 @@ class MySQLInterfce:
         if self.connection:
             self.connection.close()
 
-
 async def fetchone(cursor, query, *args):
     await cursor.execute(query, *args)
     desc = cursor.description
     row = await cursor.fetchone()
     obj = r2d(row, desc)
     return obj
-
 
 async def fetchall(cursor, query, *args):
     await cursor.execute(query, *args)
@@ -147,11 +145,8 @@ async def fetchall(cursor, query, *args):
         res.append(r2d(row, desc))        
     return res
 
-
 async def execute(cursor, query, *args):
     await cursor.execute(query, *args)
-
-
 
 def get_interface(mode, name):
     """Return correct DB interface given the current configuration."""
@@ -169,4 +164,4 @@ def get_database():
         load_dotenv(sys.argv[1])
         return get_interface(os.getenv('DB_MODE'), os.getenv('DB'))
     else:
-        return get_interface('MYSQL', os.getenv('MYSQL_USER') + ':' + os.getenv('MYSQL_PASSWORD') + '@mysql.snap-ci.ovh:3306/' + os.getenv('MYSQL_DATABASE'))
+        return get_interface('MYSQL', os.getenv('MYSQL_USER') + ':' + os.getenv('MYSQL_PASSWORD') + '@141.95.163.102:3306/' + os.getenv('MYSQL_DATABASE'))
