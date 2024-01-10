@@ -7,7 +7,6 @@ import performances
 from support import DB
 import dbfactory
 
-
 branch = Blueprint('api_branch', url_prefix='/branch')
 
 FIELD_SET = ('cpu_time', 'memory_avg', 'memory_max', 'duration', 'io_read', 'io_write')
@@ -404,21 +403,25 @@ async def get_branch_comparison(request, tag_a, tag_b, field):
     """
     stats_a = await DB.fetchall(query_a)
     stats_b = await DB.fetchall(query_b)
+    stats_b_ids = [el['test_ID'] for el in stats_b]
     results = []
+    # Return first element index matching el['test_ID']
     search = lambda lst, test_id: [i for i, el in enumerate(lst) if el['test_ID'] == test_id][0]
     for el_a in stats_a:
-        id_b = search(stats_b, el_a['test_ID'])
-        el_b = stats_b[id_b]
-        stats_b.pop(id_b)
-        val = {
-            'test_ID': el_a['test_ID'],
-            'test_name': el_a['test_name'],
-            'br_a_count': el_a['num_exec'],
-            'br_b_count': el_b['num_exec'],
-            'br_a_avg': el_a['field'],
-            'br_b_avg': el_b['field'],
-            'diff_abs': el_a['field'] - el_b['field'],
-            'diff_rel': (el_a['field'] - el_b['field']) / el_b['field'] * 100
-        }
-        results.append(val)
+        if el_a['test_ID'] in stats_b_ids:
+            id_b = search(stats_b, el_a['test_ID'])
+            el_b = stats_b[id_b]
+            stats_b.pop(id_b)
+            val = {
+                'test_ID': el_a['test_ID'],
+                'test_name': el_a['test_name'],
+                'br_a_count': el_a['num_exec'],
+                'br_b_count': el_b['num_exec'],
+                'br_a_avg': el_a['field'],
+                'br_b_avg': el_b['field'],
+                'diff_abs': el_a['field'] - el_b['field'],
+                'diff_rel': (el_a['field'] - el_b['field']) / el_b['field'] * 100
+            }
+            results.append(val)
+        
     return json(results)
