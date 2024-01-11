@@ -164,4 +164,4 @@ def get_database():
         load_dotenv(sys.argv[1])
         return get_interface(os.getenv('DB_MODE'), os.getenv('DB'))
     else:
-        return get_interface('MYSQL', os.getenv('MYSQL_USER') + ':' + os.getenv('MYSQL_PASSWORD') + '@51.91.81.10:3306/' + os.getenv('MYSQL_DATABASE'))
+        return get_interface('MYSQL', os.getenv('MYSQL_USER') + ':' + os.getenv('MYSQL_PASSWORD') + '@snap-report-mysql.snap-report.svc.cluster.local:3306/' + os.getenv('MYSQL_DATABASE'))
