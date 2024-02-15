@@ -17,6 +17,9 @@ variables:
 docker-trivy:
   allow_failure: true
 
+docker-sbom:
+  allow_failure: true
+
 # Report on Github cf https://ecp-ci.gitlab.io/docs/guides/build-status-gitlab.html
 .report-status:
   image: curlimages/curl
