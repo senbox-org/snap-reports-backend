@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.12
 
 RUN apt-get update && apt-get install -y libffi-dev libssl-dev && apt-get clean && rm -rf /var/lib/apt/lists/*
 
