@@ -20,6 +20,11 @@ docker-trivy:
 docker-sbom:
   allow_failure: true
 
+docker-publish:
+  before_script:
+    - dnf install -y gawk
+    - !reference [.docker-scripts]
+
 # Report on Github cf https://ecp-ci.gitlab.io/docs/guides/build-status-gitlab.html
 .report-status:
   image: curlimages/curl
